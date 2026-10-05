@@ -277,6 +277,18 @@
   .recharts-tooltip-cursor{fill:var(--neutral-bg);fill-opacity:.45}
 
   .nav-item{text-decoration: none;}
+  .staff-delete-button{border:1px solid var(--crit);background:var(--crit-bg);color:var(--crit);border-radius:8px;padding:9px 13px;font:inherit;font-weight:700;cursor:pointer}
+  .staff-delete-button:disabled{opacity:.5;cursor:not-allowed}
+  .staff-notice{padding:12px;margin-bottom:16px;border-radius:8px;background:var(--ok-bg);color:var(--ok-ink)}
+  .access-card{width:min(100%,600px)}
+  .invitation-form{margin-top:24px}
+  .mfa-provision{display:grid;gap:12px;line-height:1.5}
+  .mfa-qr{width:220px;height:220px;background:#fff;border:12px solid #fff;border-radius:8px;justify-self:center}
+  .mfa-secret{overflow-wrap:anywhere;padding:12px;border-radius:8px;border:1px solid var(--line);background:var(--surface-muted);user-select:all}
+  .mfa-check{display:flex;align-items:center;gap:8px;font-size:13px}
+  .mfa-check input{width:16px;height:16px;flex-shrink:0;accent-color:var(--brand)}
+  .recovery-codes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .recovery-codes code{padding:8px;background:var(--surface-muted);border-radius:6px;font-size:12px;text-align:center;user-select:all;overflow-wrap:anywhere}
 
   /* Auditoría: usa las mismas tarjetas, controles y colores de la consola. */
   .audit-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}

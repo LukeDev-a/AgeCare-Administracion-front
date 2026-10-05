@@ -7,12 +7,15 @@ export interface AdminUser {
   email: string;
   role: string;
   permissions?: string[];
+  mfa_enabled?: boolean;
+  mfa_required?: boolean;
 }
 
 interface LoginPayload {
   email: string;
   password: string;
   otp_code?: string;
+  recovery_code?: string;
 }
 
 interface AuthContextValue {
@@ -21,6 +24,7 @@ interface AuthContextValue {
   user: AdminUser | null;
   login: (payload: LoginPayload) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (profile: Pick<AdminUser, 'full_name' | 'email'>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -77,6 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     });
     const data = await response.json();
+    if (data?.error?.code === 'MFA_ENROLLMENT_REQUIRED' && data.error.enrollment_token) {
+      sessionStorage.setItem('agecare-mfa-enrollment', data.error.enrollment_token);
+      throw new Error('MFA_ENROLLMENT_REQUIRED');
+    }
     if (!response.ok) throw new Error(data?.error?.message ?? 'No fue posible iniciar sesión.');
     setSession(data);
     setUser(data.admin);
@@ -93,7 +101,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  return <AuthContext.Provider value={{ isAuthenticated, isRestoring, user, login, logout }}>{children}</AuthContext.Provider>;
+  function updateProfile(profile: Pick<AdminUser, 'full_name' | 'email'>) {
+    setUser(current => current ? { ...current, ...profile } : null);
+  }
+  return <AuthContext.Provider value={{ isAuthenticated, isRestoring, user, login, logout, updateProfile }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {

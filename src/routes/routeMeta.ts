@@ -4,6 +4,8 @@ export interface RouteMeta {
 }
 
 export const VIEW_META: Record<string, RouteMeta> = {
+  seguridad: { title: 'Seguridad de mi cuenta', crumb: 'Sistema · Autenticador y códigos de recuperación' },
+  cuentas: { title: 'Cuentas de la consola', crumb: 'Sistema · Administración de accesos y roles' },
   auditoria: { title: 'Auditoría', crumb: 'Sistema · Historial de actividad de la consola' },
   comercial: { title: 'Uso comercial', crumb: 'Analítica · Uso comercial de la plataforma' },
   operativo: { title: 'Estado operativo', crumb: 'Analítica · Salud de la plataforma y procesos críticos' },

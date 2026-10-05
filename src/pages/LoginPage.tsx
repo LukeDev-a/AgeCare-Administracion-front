@@ -13,6 +13,7 @@ export function LoginPage() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const otpCode = String(form.get('otp_code') ?? '').trim();
+    const recoveryCode = String(form.get('recovery_code') ?? '').trim();
     setError('');
     setIsSubmitting(true);
     try {
@@ -20,9 +21,11 @@ export function LoginPage() {
         email: String(form.get('email') ?? '').trim(),
         password: String(form.get('password') ?? ''),
         ...(otpCode ? { otp_code: otpCode } : {}),
+        ...(recoveryCode ? { recovery_code: recoveryCode } : {}),
       });
       navigate('/comercial', { replace: true });
     } catch (err) {
+      if (err instanceof Error && err.message === 'MFA_ENROLLMENT_REQUIRED') { navigate('/configurar-mfa'); return; }
       setError(err instanceof Error ? err.message : 'No fue posible iniciar sesión.');
     } finally {
       setIsSubmitting(false);
@@ -54,6 +57,7 @@ export function LoginPage() {
             <input id="login-otp" name="otp_code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" />
           </div>
           <div className="login-error" role="alert" aria-live="polite">{error}</div>
+          <div className="login-field"><label htmlFor="login-recovery">Código de recuperación (si no tienes tu autenticador)</label><input id="login-recovery" name="recovery_code" autoComplete="off" maxLength={40} /><p className="card-sub">Usa el código MFA o un código de recuperación, no ambos.</p></div>
           <button className={`login-submit${isSubmitting ? ' is-loading' : ''}`} type="submit" disabled={isSubmitting}>
             {isSubmitting && <span className="login-spinner" aria-hidden="true" />}
             <span className="login-submit-label">{isSubmitting ? 'Verificando...' : 'Iniciar sesión'}</span>

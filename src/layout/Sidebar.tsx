@@ -33,6 +33,8 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: 'Sistema',
     items: [
       { to: '/auditoria', icon: '📋', label: 'Auditoría', adminOnly: true },
+      { to: '/cuentas', icon: '🔑', label: 'Cuentas de la consola', adminOnly: true },
+      { to: '/seguridad', icon: '🔒', label: 'Seguridad de mi cuenta' },
       { to: '/config', icon: '⚙️', label: 'Configuración'},
       { to: '/legales', icon: '📜', label: 'Legales y privacidad'},
     ],

@@ -13,11 +13,17 @@ import { MarketplacePage } from './pages/marketplace/MarketplacePage';
 import { ModerationPage } from './pages/moderacion/ModerationPage';
 import { JuegosPage } from './pages/juegos/JuegosPage';
 import { AuditoriaPage } from './pages/auditoria/AuditoriaPage';
+import { StaffPage } from './pages/cuentas/StaffPage';
+import { InvitationPage } from './pages/acceso/InvitationPage';
+import { MfaEnrollmentPage } from './pages/acceso/MfaEnrollmentPage';
+import { SecurityPage } from './pages/acceso/SecurityPage';
 
 export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/aceptar-invitacion" element={<InvitationPage />} />
+      <Route path="/configurar-mfa" element={<MfaEnrollmentPage />} />
       <Route
         element={
           <ProtectedRoute>
@@ -36,6 +42,8 @@ export function App() {
         <Route path="/catalogos" element={<MarketplacePage />} />
         <Route path="/moderacion" element={<ModerationPage />} />
         <Route path="/auditoria" element={<ProtectedRoute adminOnly><AuditoriaPage /></ProtectedRoute>} />
+        <Route path="/cuentas" element={<ProtectedRoute adminOnly><StaffPage /></ProtectedRoute>} />
+        <Route path="/seguridad" element={<SecurityPage />} />
         <Route path="/config" element={<PlaceholderPage icon="⚙️" title="Configuración" />} />
         <Route path="/legales" element={<PlaceholderPage icon="📜" title="Legales y privacidad" />} />
       </Route>
