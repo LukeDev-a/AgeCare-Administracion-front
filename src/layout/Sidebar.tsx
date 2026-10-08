@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { canAccessRoute } from '../routes/permissions';
 
 interface NavItem {
   to: string;
@@ -35,6 +36,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { to: '/auditoria', icon: '📋', label: 'Auditoría', adminOnly: true },
       { to: '/cuentas', icon: '🔑', label: 'Cuentas de la consola', adminOnly: true },
       { to: '/seguridad', icon: '🔒', label: 'Seguridad de mi cuenta' },
+      { to: '/perfil', icon: '👤', label: 'Mi perfil' },
       { to: '/config', icon: '⚙️', label: 'Configuración'},
       { to: '/legales', icon: '📜', label: 'Legales y privacidad'},
     ],
@@ -57,7 +59,7 @@ export function Sidebar() {
         {NAV_GROUPS.map(group => (
           <div key={group.label}>
             <div className="nav-group">{group.label}</div>
-            {group.items.filter(item => !item.adminOnly || user?.role === 'admin').map(item => (
+            {group.items.filter(item => canAccessRoute(item.to, user?.permissions)).map(item => (
               <NavLink
                 key={item.to}
                 to={item.to}

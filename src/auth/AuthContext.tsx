@@ -87,7 +87,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     if (!response.ok) throw new Error(data?.error?.message ?? 'No fue posible iniciar sesión.');
     setSession(data);
-    setUser(data.admin);
+    // El login no incluye los permisos; obtener el perfil antes de habilitar las rutas.
+    const profile = await apiFetch('/auth/me');
+    if (!profile.ok) {
+      clearSession();
+      throw new Error('No fue posible obtener los permisos de tu cuenta. Vuelve a iniciar sesión.');
+    }
+    setUser(await profile.json());
   }
 
   async function logout() {

@@ -17,6 +17,7 @@ import { StaffPage } from './pages/cuentas/StaffPage';
 import { InvitationPage } from './pages/acceso/InvitationPage';
 import { MfaEnrollmentPage } from './pages/acceso/MfaEnrollmentPage';
 import { SecurityPage } from './pages/acceso/SecurityPage';
+import { ProfilePage } from './pages/perfil/ProfilePage';
 
 export function App() {
   return (
@@ -44,6 +45,7 @@ export function App() {
         <Route path="/auditoria" element={<ProtectedRoute adminOnly><AuditoriaPage /></ProtectedRoute>} />
         <Route path="/cuentas" element={<ProtectedRoute adminOnly><StaffPage /></ProtectedRoute>} />
         <Route path="/seguridad" element={<SecurityPage />} />
+        <Route path="/perfil" element={<ProfilePage />} />
         <Route path="/config" element={<PlaceholderPage icon="⚙️" title="Configuración" />} />
         <Route path="/legales" element={<PlaceholderPage icon="📜" title="Legales y privacidad" />} />
       </Route>
