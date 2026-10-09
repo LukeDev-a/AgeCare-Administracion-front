@@ -100,6 +100,8 @@
     color:#7d8898;border:1px solid #313c4d;border-radius:6px;padding:2px 6px}
   .sidebar-foot{border-top:1px solid #232d3c;padding:12px 16px;display:flex;flex-direction:column;align-items:stretch;gap:10px}
   .sidebar-account{display:flex;align-items:center;gap:10px}
+  .account-group-title{margin:0;padding:0}
+  .account-links{display:grid;gap:3px}
   .sf-avatar{width:32px;height:32px;border-radius:50%;background:#31507f;color:#cfe0fb;
     display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px}
   .sf-name{color:#e8edf4;font-size:12.5px;font-weight:600;line-height:1.15}
@@ -318,3 +320,22 @@
 .profile-fields dd { margin: 0; overflow-wrap: anywhere; }
 .profile-fields small { display: block; color: var(--ink-soft); margin-top: 6px; }
 .profile-modules { padding-left: 20px; line-height: 1.9; }
+/* Configuración de parámetros existentes */
+.settings-layout { display:grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap:16px; margin-top:16px; align-items:start; }
+.settings-list nav { display:grid; gap:8px; }
+.settings-choice { display:grid; gap:6px; width:100%; padding:12px; text-align:left; border:1px solid var(--line); border-radius:9px; background:var(--surface); color:var(--ink); cursor:pointer; overflow-wrap:anywhere; }
+.settings-choice.selected { border-color:var(--s1); box-shadow:inset 3px 0 var(--s1); }
+.settings-choice small,.settings-field small,.settings-metadata dt { color:var(--ink-soft); }
+.settings-field { display:grid; gap:7px; margin:14px 0; font-size:13px; }
+.settings-field input,.settings-field select,.settings-field textarea { box-sizing:border-box; width:100%; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); font:inherit; }
+.settings-field textarea { resize:vertical; }
+.settings-fields,.settings-metadata { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); gap:12px; }
+.settings-metadata { margin:20px 0; font-size:13px; }
+.settings-metadata dd { margin:5px 0 0; overflow-wrap:anywhere; }
+.settings-editor pre { white-space:pre-wrap; overflow-wrap:anywhere; padding:12px; border:1px solid var(--line); border-radius:8px; font-size:12px; }
+.settings-current,.settings-rules { margin:16px 0; }
+.settings-editor summary { cursor:pointer; }
+.settings-edit-title { font-size:15px; margin:24px 0 0; }
+.settings-field .settings-json { font-family:monospace; }
+.settings-conflict { border:1px solid var(--line); border-radius:8px; padding:14px; margin-top:16px; }
+@media(max-width:850px) { .settings-layout { grid-template-columns:1fr; } }

@@ -35,8 +35,6 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { to: '/auditoria', icon: '📋', label: 'Auditoría', adminOnly: true },
       { to: '/cuentas', icon: '🔑', label: 'Cuentas de la consola', adminOnly: true },
-      { to: '/seguridad', icon: '🔒', label: 'Seguridad de mi cuenta' },
-      { to: '/perfil', icon: '👤', label: 'Mi perfil' },
       { to: '/config', icon: '⚙️', label: 'Configuración'},
       { to: '/legales', icon: '📜', label: 'Legales y privacidad'},
     ],
@@ -45,6 +43,9 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
 
 export function Sidebar() {
   const { logout, user } = useAuth();
+  const visibleGroups = NAV_GROUPS.map(group => ({
+    ...group, items: group.items.filter(item => canAccessRoute(item.to, user?.permissions)),
+  })).filter(group => group.items.length > 0);
 
   return (
     <aside className="sidebar">
@@ -55,11 +56,11 @@ export function Sidebar() {
           <div className="logo-sub">Consola de administración</div>
         </div>
       </div>
-      <nav className="nav">
-        {NAV_GROUPS.map(group => (
+      <nav className="nav" aria-label="Módulos de la consola">
+        {visibleGroups.map(group => (
           <div key={group.label}>
             <div className="nav-group">{group.label}</div>
-            {group.items.filter(item => canAccessRoute(item.to, user?.permissions)).map(item => (
+            {group.items.map(item => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -74,6 +75,7 @@ export function Sidebar() {
         ))}
       </nav>
       <div className="sidebar-foot">
+        <div className="nav-group account-group-title">Mi cuenta</div>
         <div className="sidebar-account">
           <div className="sf-avatar">{user?.full_name.slice(0, 2).toUpperCase() || 'AD'}</div>
           <div>
@@ -81,6 +83,14 @@ export function Sidebar() {
             <div className="sf-role">{user?.role || 'Staff'} · Wellq Co</div>
           </div>
         </div>
+        <nav className="account-links" aria-label="Mi cuenta">
+          <NavLink to="/perfil" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+            <span className="ico" aria-hidden="true">👤</span>Mi perfil
+          </NavLink>
+          <NavLink to="/seguridad" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+            <span className="ico" aria-hidden="true">🔒</span>Seguridad de mi cuenta
+          </NavLink>
+        </nav>
         <button className="logout-button" type="button" onClick={() => void logout()}>
           Cerrar sesión
         </button>

@@ -23,13 +23,16 @@
 | `/cuentas` | Gestión de cuentas internas e invitaciones, admin |
 | `/seguridad` | Configuración de seguridad de la cuenta propia |
 | `/perfil` | Perfil propio de solo lectura, disponible para todos los roles autenticados |
-| `/config`, `/legales` | Pantallas placeholder |
+| `/config` | Consulta y edición de parámetros existentes, admin |
+| `/legales` | Pantalla placeholder |
 
 `ProtectedRoute` exige sesión y consulta el mapa de módulos de `src/routes/permissions.ts`; el menú utiliza el mismo mapa. Login obtiene `/auth/me` para disponer de permisos antes de habilitar rutas. La opción `adminOnly` conserva la restricción adicional de cuentas/auditoría. Una ruta rechazada redirige al primer módulo permitido, con seguridad propia como alternativa. No equiparar acceso de consulta con permiso de modificar datos: los botones de escritura tienen un alcance independiente.
 
 `pages/perfil/ProfilePage.tsx` consulta `/auth/me` mediante `api/profile.ts`; `ProfileDetails.tsx` muestra ID, nombre, correo, rol, permisos de consulta, último login y estado MFA. La fecha se presenta en America/Santiago. Incluye carga, error y reintento, y enlace a seguridad. No permite editar datos ni consultar otras cuentas. `/perfil` y `/seguridad` son accesibles a cualquier cuenta autenticada sin exigir un permiso de módulo.
 
 ## Flujos sensibles
+
+El menú principal oculta grupos vacíos tras filtrar permisos. “Sistema” agrupa cuentas, auditoría, configuración y legales. “Mi cuenta” está al pie junto al nombre/avatar y ofrece perfil, seguridad y cierre de sesión para todos los roles autenticados. Las migas de perfil y seguridad usan “Mi cuenta”. No es un cambio del contrato de API ni de permisos.
 
 `apiFetch` usa el access vigente, coordina refresh simultáneo, reintenta una sola vez el 401 y notifica expiración. El contexto escucha `agecare-session-expired`. Tokens en `sessionStorage`: `agecare_access_token`, `agecare_refresh_token`. El token restringido de MFA se guarda separadamente como `agecare-mfa-enrollment`; no equivale a una sesión autenticada.
 

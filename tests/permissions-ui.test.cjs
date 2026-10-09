@@ -36,6 +36,10 @@ test('el menú renderizado y el acceso directo a rutas respetan los cinco perfil
   for (const [role, modules] of Object.entries(roles)) {
     user = { role, full_name: 'Cuenta de prueba', permissions: modules };
     const menu = renderToStaticMarkup(React.createElement(Sidebar));
+    assert.equal(menu.includes('>Sistema</div>'), role === 'admin', `${role}: grupo Sistema`);
+    assert.ok(menu.includes('aria-label="Mi cuenta"'), `${role}: navegación personal`);
+    assert.ok(menu.indexOf('href="/perfil"') > menu.indexOf('class="sidebar-foot"'));
+    assert.ok(menu.indexOf('href="/seguridad"') > menu.indexOf('class="sidebar-foot"'));
     assert.ok(menu.includes('href="/perfil"'), `${role}: perfil visible`);
     pathname = '/perfil';
     assert.equal(renderToStaticMarkup(React.createElement(ProtectedRoute, null, 'PERFIL PROPIO')), 'PERFIL PROPIO');

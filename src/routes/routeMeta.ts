@@ -4,8 +4,8 @@ export interface RouteMeta {
 }
 
 export const VIEW_META: Record<string, RouteMeta> = {
-  perfil: { title: 'Mi perfil', crumb: 'Sistema · Datos y permisos de mi cuenta' },
-  seguridad: { title: 'Seguridad de mi cuenta', crumb: 'Sistema · Autenticador y códigos de recuperación' },
+  perfil: { title: 'Mi perfil', crumb: 'Mi cuenta · Datos y permisos' },
+  seguridad: { title: 'Seguridad de mi cuenta', crumb: 'Mi cuenta · Autenticador y códigos de recuperación' },
   cuentas: { title: 'Cuentas de la consola', crumb: 'Sistema · Administración de accesos y roles' },
   auditoria: { title: 'Auditoría', crumb: 'Sistema · Historial de actividad de la consola' },
   comercial: { title: 'Uso comercial', crumb: 'Analítica · Uso comercial de la plataforma' },

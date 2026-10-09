@@ -62,7 +62,7 @@ export function JuegosPage() {
     <>
       <div className="filter-row">
         <button className="action-button" type="button" onClick={() => setShowPreview(value => !value)}>
-          {showPreview ? '← Ver interfaz original' : 'Probar interfaz con vista previa y rotación →'}
+          {showPreview ? 'Modificar juegos' : 'Vista previa y rotación →'}
         </button>
       </div>
 
