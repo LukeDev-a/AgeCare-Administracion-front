@@ -1,5 +1,5 @@
 import type { ContentItem } from '../../api/content';
-import { CONTENT_STATUS_META, CONTENT_TYPES } from '../../lib/contentMeta';
+import { AUDIO_STATES, CONTENT_STATUS_META, CONTENT_TYPES } from '../../lib/contentMeta';
 import { ticketDate } from '../../lib/format';
 
 interface ContentTableProps {
@@ -27,7 +27,7 @@ export function ContentTable({ items, selectedId, onSelect }: ContentTableProps)
           <th>Tipo</th>
           <th>Estado</th>
           <th>Audio</th>
-          <th>Actualizado</th>
+          <th>Programación / actualizado</th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -43,8 +43,8 @@ export function ContentTable({ items, selectedId, onSelect }: ContentTableProps)
               <td>{item.title}</td>
               <td>{CONTENT_TYPES[item.type] ?? item.type}</td>
               <td><span className={`chip ${status.className}`}>{status.label}</span></td>
-              <td>{item.audio_available ? 'Disponible' : 'Pendiente'}</td>
-              <td>{ticketDate(item.updated_at)}</td>
+              <td>{item.audio_available ? 'Disponible' : item.audio_status === 'ready' ? 'Audio no disponible' : AUDIO_STATES[item.audio_status] || 'Pendiente'}{item.approved_version !== item.text_version && <div className="card-sub">Texto por aprobar</div>}</td>
+              <td>{item.publish_at && <div>Programado: {ticketDate(item.publish_at)}</div>}{ticketDate(item.updated_at)}</td>
               <td>
                 <button
                   className="action-button"

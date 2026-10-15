@@ -11,7 +11,6 @@ const EMPTY_FORM: GameAppPayload = {
   is_active: true,
   featured: false,
   target_url: '',
-  icon_url: '',
 };
 
 interface GameFormModalProps {
@@ -36,7 +35,6 @@ export function GameFormModal({ editingItem, onClose, onSaved }: GameFormModalPr
         is_active: editingItem.is_active,
         featured: editingItem.featured,
         target_url: editingItem.target_url ?? '',
-        icon_url: editingItem.icon_url ?? '',
       });
     } else {
       setForm(EMPTY_FORM);

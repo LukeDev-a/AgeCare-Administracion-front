@@ -4,6 +4,7 @@ import { fmt } from '../../lib/format';
 import { ContentDetail } from './ContentDetail';
 import { ContentTable } from './ContentTable';
 import { NewContentForm } from './NewContentForm';
+import { NewsCandidates } from './NewsCandidates';
 
 export function ContentPage() {
   const [searchInput, setSearchInput] = useState('');
@@ -15,14 +16,16 @@ export function ContentPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
-    setError('');
-    fetchContent({ search, type, status })
+    fetchContent({ search, type, status, page })
       .then(response => {
         if (cancelled) return;
+        setError('');
         setData(response);
+        if (page > 1 && !response.items.length) setPage(value => Math.max(1, value - 1));
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -31,7 +34,7 @@ export function ContentPage() {
     return () => {
       cancelled = true;
     };
-  }, [search, type, status, reloadToken]);
+  }, [search, type, status, page, reloadToken]);
 
   function refresh() {
     setReloadToken(token => token + 1);
@@ -39,6 +42,7 @@ export function ContentPage() {
 
   function handleSearch() {
     setSearch(searchInput.trim());
+    setPage(1);
   }
 
   const selectedItem = data?.items.find(item => item.id === selectedId) ?? null;
@@ -77,12 +81,12 @@ export function ContentPage() {
               if (event.key === 'Enter') handleSearch();
             }}
           />
-          <select aria-label="Filtrar por tipo" value={type} onChange={event => setType(event.target.value)}>
+          <select aria-label="Filtrar por tipo" value={type} onChange={event => { setType(event.target.value); setPage(1); }}>
             <option value="">Todos los tipos</option>
             <option value="news">Noticias</option>
-            <option value="joke">Consejos y humor</option>
+            <option value="joke">Chistes</option>
           </select>
-          <select aria-label="Filtrar por estado" value={status} onChange={event => setStatus(event.target.value)}>
+          <select aria-label="Filtrar por estado" value={status} onChange={event => { setStatus(event.target.value); setPage(1); }}>
             <option value="">Todos los estados</option>
             <option value="draft">Borrador</option>
             <option value="published">Publicado</option>
@@ -90,6 +94,10 @@ export function ContentPage() {
           </select>
           <button className="action-button" type="button" onClick={handleSearch}>Buscar</button>
         </div>
+        <div className="audit-pagination"><span>Página {page}</span><div className="audit-actions">
+          <button className="theme-toggle" disabled={page <= 1} onClick={() => setPage(value => value - 1)}>Anterior</button>
+          <button className="theme-toggle" disabled={!data || page * data.page_size >= data.total} onClick={() => setPage(value => value + 1)}>Siguiente</button>
+          <button className="theme-toggle" onClick={refresh}>Actualizar contenido</button></div></div>
 
         <div style={{ overflowX: 'auto' }}>
           {error && <table className="data"><tbody><tr><td>{error}</td></tr></tbody></table>}
@@ -102,6 +110,7 @@ export function ContentPage() {
 
       {selectedItem ? (
         <ContentDetail
+          key={`${selectedItem.id}-${selectedItem.text_version}-${selectedItem.updated_at}`}
           item={selectedItem}
           onChanged={refresh}
           onDeleted={() => {
@@ -114,6 +123,7 @@ export function ContentPage() {
           <div className="placeholder-box" style={{ padding: 35 }}>Selecciona un contenido para editarlo.</div>
         </div>
       )}
+      <NewsCandidates onDraft={() => { setPage(1); refresh(); }} />
     </>
   );
 }

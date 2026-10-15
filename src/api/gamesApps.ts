@@ -14,7 +14,6 @@ export interface GameAppItem {
   is_active: boolean;
   featured: boolean;
   target_url?: string | null;
-  icon_url?: string | null;
 }
 
 export interface ActiveGamesOut {
@@ -33,7 +32,6 @@ export interface GameAppPayload {
   is_active: boolean;
   featured: boolean;
   target_url?: string;
-  icon_url?: string;
 }
 
 async function parseErrorMessage(response: Response, fallback: string): Promise<string> {

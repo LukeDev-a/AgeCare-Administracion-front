@@ -8,6 +8,8 @@
 
 ## Rutas
 
+Contenido de fase 10 incorpora candidatos persistentes (`NewsCandidates.tsx`), comparación original/propuesta, revisión de procedencia con motivo, adaptación manual o Gemini y creación de borrador. El editor permite programación, aprobación de versión, audio autenticado con blob y errores legibles; eliminar solo visible a admin. Página real y controles de navegación. Runtime informa worker/Gemini no habilitados; actualizar consulta estados, sin polling periódico. Backend exige permisos y versión, no confiar solo en botones. Integración externa y revisión visual siguen pendientes; contrato en docs/contenido-editorial.md del backend.
+
 | Ruta | Módulo |
 |---|---|
 | `/login` | Inicio de sesión con contraseña y segundo factor cuando corresponde |

@@ -21,6 +21,7 @@ export function NewContentForm({ onCreated, onCancel }: NewContentFormProps) {
         title: String(data.get('title') ?? ''),
         body: String(data.get('body') ?? ''),
         tags,
+        publish_at: data.get('publish_at') ? new Date(String(data.get('publish_at'))).toISOString() : null,
       });
       form.reset();
       onCreated();
@@ -37,7 +38,7 @@ export function NewContentForm({ onCreated, onCancel }: NewContentFormProps) {
         Tipo
         <select name="type" defaultValue="news">
           <option value="news">Noticias</option>
-          <option value="joke">Consejos y humor</option>
+          <option value="joke">Chistes</option>
         </select>
       </label>
       <label>
@@ -53,6 +54,8 @@ export function NewContentForm({ onCreated, onCancel }: NewContentFormProps) {
         <input name="tags" placeholder="salud, familia" />
       </label>
       <div className="ticket-form-actions">
+        <label>Programar publicación (hora local)<input type="datetime-local" name="publish_at" />
+          <small>Solo se publicará con aprobación editorial y audio vigente.</small></label>
         <button className="action-button" type="button" onClick={onCancel}>Cerrar formulario</button>
         <button className="action-button" type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Guardando...' : 'Guardar contenido'}
