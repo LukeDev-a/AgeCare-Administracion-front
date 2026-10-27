@@ -5,7 +5,7 @@ export const percent = (value: number) =>
 
 export const money = (value: number) => '$' + Number(value).toLocaleString('es-CL');
 
-export const moneyOrDash = (value: number | null | undefined) => (value ? money(value) : '—');
+export const moneyOrDash = (value: number | null | undefined) => (value == null ? '—' : money(value));
 
 export const delta = (value: number | null | undefined) =>
   value == null

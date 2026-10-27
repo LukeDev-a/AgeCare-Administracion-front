@@ -7,7 +7,7 @@ interface PlanMixChartProps {
 }
 
 export function PlanMixChart({ plans }: PlanMixChartProps) {
-  const row: Record<string, number | string> = { name: 'Usuarios activos' };
+  const row: Record<string, number | string> = { name: 'Cantidad registrada por plan' };
   plans.forEach(plan => {
     row[plan.name] = plan.users;
   });

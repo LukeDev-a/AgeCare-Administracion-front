@@ -1,3 +1,11 @@
+export function canManageTickets(role?: string): boolean {
+  return role === 'admin' || role === 'support';
+}
+
+export function canManageMarketplace(role?: string): boolean {
+  return role === 'admin' || role === 'editor';
+}
+
 export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/comercial': 'metrics', '/operativo': 'ops', '/usuarios': 'metrics',
   '/funcional': 'metrics', '/juegos': 'games', '/tickets': 'support',

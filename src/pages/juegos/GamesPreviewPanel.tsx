@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toggleGameAppStatus, type GameAppItem } from '../../api/gamesApps';
 
 interface GamesPreviewPanelProps {
+  canManage: boolean;
   items: GameAppItem[];
   onChanged: () => void;
 }
 
-export function GamesPreviewPanel({ items, onChanged }: GamesPreviewPanelProps) {
+export function GamesPreviewPanel({ items, canManage, onChanged }: GamesPreviewPanelProps) {
   const activos = useMemo(() => items.filter(item => item.is_active), [items]);
   const [selectedId, setSelectedId] = useState<string | null>(activos[0]?.id ?? null);
   const [previewFailed, setPreviewFailed] = useState(false);
@@ -43,6 +44,7 @@ export function GamesPreviewPanel({ items, onChanged }: GamesPreviewPanelProps) 
   }, [menuOpenId]);
 
   async function handleSetStatus(item: GameAppItem, activar: boolean) {
+    if (!canManage) return;
     if (item.is_active === activar) {
       setMenuOpenId(null);
       return;
@@ -75,7 +77,7 @@ export function GamesPreviewPanel({ items, onChanged }: GamesPreviewPanelProps) 
         <div className="card-head">
           <div>
             <div className="card-title">Juegos y aplicaciones</div>
-            <div className="card-sub">Selecciona un módulo para verlo abajo. Usa el menú para activarlo o desactivarlo.</div>
+            <div className="card-sub">Selecciona un módulo para verlo abajo.{canManage && ' Usa el menú para activarlo o desactivarlo.'}</div>
           </div>
           <span className="card-sub">{items.length} módulos</span>
         </div>
@@ -102,7 +104,7 @@ export function GamesPreviewPanel({ items, onChanged }: GamesPreviewPanelProps) 
                     {item.is_active ? 'Activo' : 'Inactivo'}
                   </span>
                 </td>
-                <td className="num dropdown-trigger">
+                {canManage && <td className="num dropdown-trigger">
                   <button
                     className="action-button"
                     type="button"
@@ -124,7 +126,7 @@ export function GamesPreviewPanel({ items, onChanged }: GamesPreviewPanelProps) 
                       </button>
                     </div>
                   )}
-                </td>
+                </td>}
               </tr>
             ))}
           </tbody>
@@ -139,7 +141,7 @@ export function GamesPreviewPanel({ items, onChanged }: GamesPreviewPanelProps) 
           </div>
         </div>
         {activos.length === 0 ? (
-          <div className="placeholder-box" style={{ padding: 30 }}>No hay ningún módulo activo. Actívalo desde la lista de arriba.</div>
+          <div className="placeholder-box" style={{ padding: 30 }}>No hay ningún módulo activo.{canManage && ' Actívalo desde la lista de arriba.'}</div>
         ) : (
           <div className="seg" style={{ flexWrap: 'wrap', height: 'auto' }}>
             {activos.map(item => (
@@ -161,7 +163,7 @@ export function GamesPreviewPanel({ items, onChanged }: GamesPreviewPanelProps) 
 
       <div className="card">
         {!selected ? (
-          <div className="placeholder-box" style={{ padding: 35 }}>Activa al menos un módulo para ver su vista previa aquí.</div>
+          <div className="placeholder-box" style={{ padding: 35 }}>{canManage ? 'Activa al menos un módulo para ver su vista previa aquí.' : 'No hay módulos activos para previsualizar.'}</div>
         ) : (
           <>
             <div className="card-head">
@@ -178,7 +180,7 @@ export function GamesPreviewPanel({ items, onChanged }: GamesPreviewPanelProps) 
             <div style={{ position: 'relative', paddingTop: '56.25%', background: 'var(--bg)', borderRadius: 8, overflow: 'hidden' }}>
               {!selected.target_url ? (
                 <div className="placeholder-box" style={{ position: 'absolute', inset: 0 }}>
-                  Agrega la URL del módulo para poder previsualizarlo.
+                  {canManage ? 'Agrega la URL del módulo para poder previsualizarlo.' : 'Este módulo no tiene una vista previa disponible.'}
                 </div>
               ) : previewFailed ? (
                 <div className="placeholder-box" style={{ position: 'absolute', inset: 0 }}>

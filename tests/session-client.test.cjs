@@ -61,6 +61,30 @@ test("refresh revocado elimina la sesión", async () => {
   assert.equal(expired, 1);
 });
 
+test("RF03: JWT aún vigente rechazado por cambio de rol intenta refresh y notifica expiración", async () => {
+  client.save(access(900), "refresh-del-rol-anterior");
+  const calls = [];
+  global.fetch = async (url) => {
+    calls.push(url);
+    return json({ error: { code: url.endsWith('/auth/refresh') ? 'INVALID_REFRESH' : 'UNAUTHORIZED' } }, 401);
+  };
+  const response = await client.request('/games-apps/');
+  assert.equal(response.status, 401);
+  assert.deepEqual(calls, ['http://api/games-apps/', 'http://api/auth/refresh']);
+  assert.equal(expired, 1);
+  assert.equal(storage.size, 0);
+});
+
+test("RF03: un 403 por falta de permisos conserva la sesión y no intenta renovar", async () => {
+  client.save(access(900), "refresh-valido");
+  const calls = [];
+  global.fetch = async (url) => { calls.push(url); return json({}, 403); };
+  assert.equal((await client.request('/settings')).status, 403);
+  assert.deepEqual(calls, ['http://api/settings']);
+  assert.equal(expired, 0);
+  assert.equal(storage.get('agecare_refresh_token'), 'refresh-valido');
+});
+
 test("error de red conserva credenciales y permite otro intento", async () => {
   client.save(access(-5), "refresh-old");
   global.fetch = async () => { throw new Error("offline"); };

@@ -1,176 +1,105 @@
-import { useEffect, useState } from 'react';
-import {
-  fetchCriticalProcesses,
-  fetchOpsIncidents,
-  fetchOpsLatency,
-  fetchOpsStatus,
-  type CriticalProcesses,
-  type OpsIncidents,
-  type OpsLatency,
-  type OpsStatus,
-} from '../../api/operational';
-import { formatDate, percent } from '../../lib/format';
+import { useCallback, useEffect, useState } from 'react';
+import { fetchCriticalProcesses, fetchOpsIncidents, fetchOpsLatency, fetchOpsStatus, type OpsWindow } from '../../api/operational';
+import { percent } from '../../lib/format';
 import { getOpsStatus } from '../../lib/statusMeta';
+import { OPS_COMPONENTS, opsDate, opsExecution, opsMeasurement, opsOrigin } from '../../lib/operationalMeta';
 import { LatencyChart } from './LatencyChart';
 import { OpsComponentCard } from './OpsComponentCard';
 
-const INCIDENT_STATUS_META: Record<string, { className: string; icon: string; label: string }> = {
-  resolved: { className: 'ok', icon: '✔', label: 'Resuelto' },
-  completed: { className: 'neutral', icon: '🛠', label: 'Completado' },
-};
-
-export function OperativoPage() {
-  const [status, setStatus] = useState<OpsStatus | null>(null);
-  const [latency, setLatency] = useState<OpsLatency | null>(null);
-  const [incidents, setIncidents] = useState<OpsIncidents | null>(null);
-  const [processes, setProcesses] = useState<CriticalProcesses | null>(null);
-  const [error, setError] = useState('');
-
+function useRemote<T>(key: string, load: () => Promise<T>) {
+  const [state, setState] = useState<{ key: string; data: T | null; error: string }>({ key: '', data: null, error: '' });
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchOpsStatus(), fetchOpsLatency(), fetchOpsIncidents(), fetchCriticalProcesses()])
-      .then(([statusData, latencyData, incidentsData, processesData]) => {
-        if (cancelled) return;
-        setStatus(statusData);
-        setLatency(latencyData);
-        setIncidents(incidentsData);
-        setProcesses(processesData);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'No fue posible cargar el estado operativo.');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    load().then(data => { if (!cancelled) setState({ key, data, error: '' }); })
+      .catch((error: unknown) => { if (!cancelled) setState({ key, data: null,
+        error: error instanceof Error ? error.message : 'No fue posible consultar los datos.' }); });
+    return () => { cancelled = true; };
+  }, [key, load]);
+  return state.key === key ? state : { key, data: null, error: '' };
+}
 
-  if (error) {
-    return (
-      <div className="banner crit">
-        <span className="b-ico">✖</span>
-        <div className="b-t">{error}</div>
+export function OperativoPage() {
+  const [window, setWindow] = useState<OpsWindow>('1h');
+  const [selected, setSelected] = useState<string[]>(OPS_COMPONENTS.map(([key]) => key).filter(key => key !== 'push' && key !== 'ai_assistant'));
+  const [reload, setReload] = useState(0);
+  const latencyLoad = useCallback(() => fetchOpsLatency(window, selected), [window, selected]);
+  const statusState = useRemote(`status:${reload}`, fetchOpsStatus);
+  const latencyState = useRemote(`${window}:${selected.join(',')}:${reload}`, latencyLoad);
+  const processState = useRemote(`processes:${reload}`, fetchCriticalProcesses);
+  const incidentsState = useRemote(`incidents:${reload}`, fetchOpsIncidents);
+  const status = statusState.data, latency = latencyState.data, processes = processState.data;
+  const overall = status?.overall ? getOpsStatus(status.overall) : null;
+  return <>
+    <div className="filter-row">
+      <button className="action-button" type="button" onClick={() => setReload(value => value+1)}>Actualizar vista</button>
+      <span className="mini-note">Se actualiza al entrar o al pulsar este botón. Las fechas corresponden a las mediciones recibidas.</span>
+    </div>
+    {statusState.error && <div className="card" role="alert">{statusState.error}</div>}
+    {!status && !statusState.error && <div className="card">Cargando estado operativo...</div>}
+    {status && <>
+      <div className={`banner ${overall?.className ?? 'neutral'}`}>
+        <div><div className="b-t">Estado general: {overall?.label ?? 'Sin datos de componentes'}</div>
+          <div className="b-s">Última comprobación recibida: {opsDate(status.checked_at)} · Santiago</div></div>
       </div>
-    );
-  }
-
-  if (!status) {
-    return (
-      <div className="banner ok">
-        <span className="b-ico">✅</span>
-        <div>
-          <div className="b-t">Cargando estado operativo...</div>
-          <div className="b-s">Consultando componentes...</div>
-        </div>
-      </div>
-    );
-  }
-
-  const overall = getOpsStatus(status.overall);
-  const degraded = status.components.filter(component => component.status !== 'operational');
-  const bannerIcon = overall.className === 'ok' ? '✅' : overall.className === 'warn' ? '⚠️' : '✖';
-  const bannerTitle =
-    overall.className === 'ok'
-      ? `Todos los sistemas operativos${degraded.length ? ` — ${degraded.length} componente${degraded.length === 1 ? '' : 's'} degradado${degraded.length === 1 ? '' : 's'}` : ''}`
-      : `Estado general: ${overall.label.replace(/^\S+\s/, '')}`;
-
-  return (
-    <>
-      <div className={`banner ${overall.className}`}>
-        <span className="b-ico">{bannerIcon}</span>
-        <div>
-          <div className="b-t">{bannerTitle}</div>
-          <div className="b-s">Última comprobación: {new Date(status.checked_at).toLocaleString('es-CL')}</div>
-        </div>
-        <div className="tb-spacer" />
-        <span className={`chip ${degraded.length ? 'warn' : 'ok'}`}>
-          {degraded.length
-            ? `${degraded.length} componente${degraded.length === 1 ? '' : 's'} requiere${degraded.length === 1 ? '' : 'n'} atención`
-            : '✔ Sin alertas'}
-        </span>
-      </div>
-
       <div className="grid g3" style={{ marginBottom: 16 }}>
-        {status.components.map(component => (
-          <OpsComponentCard key={component.key} component={component} />
-        ))}
+        {status.components.map(component => <OpsComponentCard key={component.key} component={component} />)}
       </div>
-
-      <div className="grid g2">
-        <div className="card">
-          <div className="card-head">
-            <div>
-              <div className="card-title">Tiempo de respuesta p95 por componente</div>
-              <div className="card-sub">Servicios síncronos · milisegundos · últimos 60 min</div>
-            </div>
-          </div>
-          <div className="chart-wrap">
-            {latency && latency.components.length > 0 && <LatencyChart components={latency.components} />}
-            {latency && latency.components.length === 0 && 'No hay datos de latencia.'}
-          </div>
-          <div className="mini-note">
-            Push (entrega extremo a extremo) y Asistente IA (generación) se miden aparte por ser asíncronos — ver tarjetas de componente.
-          </div>
+    </>}
+    <div className="card">
+      <div className="card-title">Latencias por componente</div>
+      <label>Ventana de consulta <select value={window} onChange={event => setWindow(event.target.value as OpsWindow)}>
+        <option value="1h">Última hora</option><option value="24h">Últimas 24 horas</option><option value="7d">Últimos 7 días</option>
+      </select></label>
+      <fieldset style={{ marginTop: 12 }}><legend>Componentes que deseas comparar</legend>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+          {OPS_COMPONENTS.map(([key, name]) => <label key={key}>
+            <input type="checkbox" checked={selected.includes(key)} disabled={selected.length === 1 && selected.includes(key)}
+              onChange={event => setSelected(values => event.target.checked ? [...values, key] : values.filter(value => value !== key))} /> {name}
+          </label>)}
         </div>
-
-        <div className="card">
-          <div className="card-head">
-            <div>
-              <div className="card-title">Incidentes recientes</div>
-              <div className="card-sub">Últimos 30 días</div>
-            </div>
-          </div>
-          <ul className="flag-list">
-            {incidents && incidents.items.length === 0 && <li>No hay incidentes recientes.</li>}
-            {incidents?.items.map((incident, index) => {
-              const meta = INCIDENT_STATUS_META[incident.status] ?? { className: 'warn', icon: '▲', label: 'En observación' };
-              return (
-                <li key={index}>
-                  <span className={`chip ${meta.className}`}>{meta.icon} {meta.label}</span>
-                  <div>
-                    <div className="fl-t">{incident.title}</div>
-                    <div className="fl-s">{formatDate(incident.started_at)} · {incident.description}</div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="card-head">
-          <div>
-            <div className="card-title">Procesos críticos de negocio</div>
-            <div className="card-sub">Cadenas de extremo a extremo que deben funcionar siempre</div>
-          </div>
-        </div>
-        <table className="data">
-          <thead>
-            <tr>
-              <th>Proceso</th>
-              <th>Cadena</th>
-              <th className="num">p95 extremo a extremo</th>
-              <th className="num">Éxito 24 h</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {processes?.processes.map((process, index) => {
-              const processStatus = getOpsStatus(process.status);
-              return (
-                <tr key={index}>
-                  <td style={{ fontWeight: 600 }}>{process.name}</td>
-                  <td style={{ color: 'var(--ink-soft)' }}>{process.chain}</td>
-                  <td className="num">{process.p95_seconds.toLocaleString('es-CL', { maximumFractionDigits: 1 })} s</td>
-                  <td className="num">{percent(process.success_24h)}</td>
-                  <td><span className={`chip ${processStatus.className}`}>{processStatus.label}</span></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </>
-  );
+      </fieldset>
+      <p className="mini-note">p50: tiempo dentro del que termina el 50 % de las mediciones. p95: el 95 %. Tiempos en milisegundos.</p>
+      {latencyState.error && <div role="alert">{latencyState.error}</div>}
+      {!latency && !latencyState.error && <p>Cargando latencias...</p>}
+      {latency && <>
+        <div className="card-sub">Ventana aplicada: {{ '1h': '1 hora', '24h': '24 horas', '7d': '7 días' }[latency.window]} · Calculado: {opsDate(latency.computed_at)} · Santiago</div>
+        {latency.components.length ? <LatencyChart components={latency.components} /> : <p>Sin datos de latencia para esta selección.</p>}
+        {!!latency.missing_components?.length && <p>Sin datos: {latency.missing_components.map(key => OPS_COMPONENTS.find(([value]) => value === key)?.[1] ?? key).join(', ')}.</p>}
+        <div style={{ overflowX: 'auto' }}><table className="data">
+          <thead><tr><th>Componente</th><th>Medición</th><th>p50</th><th>p95</th><th>Muestras</th><th>Calculado</th></tr></thead>
+          <tbody>{latency.components.map(row => <tr key={row.key}>
+            <td>{row.name}<div className="mini-note">{opsOrigin(row.data_origin)}</div></td>
+            <td>{opsMeasurement(row.measurement_kind)}</td><td>{row.p50_ms.toLocaleString('es-CL')} ms</td><td>{row.p95_ms.toLocaleString('es-CL')} ms</td>
+            <td>{row.sample_count.toLocaleString('es-CL')}</td><td>{opsDate(row.computed_at)}</td>
+          </tr>)}</tbody>
+        </table></div>
+      </>}
+    </div>
+    <div className="card">
+      <div className="card-title">Procesos críticos</div>
+      <div className="card-sub">Éxito de las últimas 24 horas · Calculado: {opsDate(processes?.computed_at)} · Santiago</div>
+      {processState.error && <p role="alert">{processState.error}</p>}
+      {!processes && !processState.error && <p>Cargando procesos...</p>}
+      {processes && !processes.processes.length && <p>Sin datos de procesos críticos.</p>}
+      <div style={{ overflowX: 'auto' }}><table className="data">
+        <thead><tr><th>Proceso</th><th>Cadena y tipo de ejecución</th><th>p95</th><th>Éxito · 24 h</th><th>Estado</th><th>Calculado</th></tr></thead>
+        <tbody>{processes?.processes.map(process => <tr key={process.key}>
+          <td>{process.name}<div className="mini-note">{opsOrigin(process.data_origin)}</div></td>
+          <td>{process.chain}<div className="mini-note">{opsExecution(process.execution_kind)}</div></td>
+          <td>{process.p95_seconds.toLocaleString('es-CL', { maximumFractionDigits: 1 })} s</td><td>{percent(process.success_24h)}</td>
+          <td><span className={`chip ${getOpsStatus(process.status).className}`}>{getOpsStatus(process.status).label}</span></td><td>{opsDate(process.computed_at)}</td>
+        </tr>)}</tbody>
+      </table></div>
+    </div>
+    <div className="card">
+      <div className="card-title">Incidentes recientes</div><div className="card-sub">Últimos 30 días</div>
+      {incidentsState.error && <p role="alert">{incidentsState.error}</p>}
+      {!incidentsState.data && !incidentsState.error && <p>Cargando incidentes...</p>}
+      {incidentsState.data && !incidentsState.data.items.length && <p>No hay incidentes recientes.</p>}
+      <ul className="flag-list">{incidentsState.data?.items.map((incident, index) => <li key={index}>
+        <div><div className="fl-t">{incident.title}</div><div className="fl-s">{opsDate(incident.started_at)} · {incident.description}</div>
+          <span className="chip neutral">{{ investigating: 'En investigación', observing: 'En observación', resolved: 'Resuelto', completed: 'Completado' }[incident.status] ?? 'Estado sin identificar'}</span></div>
+      </li>)}</ul>
+    </div>
+  </>;
 }

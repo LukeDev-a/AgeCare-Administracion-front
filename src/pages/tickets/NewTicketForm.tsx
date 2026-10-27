@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { createTicket, type TicketPriority } from '../../api/tickets';
+import { useAuth } from '../../auth/AuthContext';
+import { canManageTickets } from '../../routes/permissions';
 
 interface NewTicketFormProps {
   onCreated: () => void;
@@ -7,10 +9,13 @@ interface NewTicketFormProps {
 }
 
 export function NewTicketForm({ onCreated, onCancel }: NewTicketFormProps) {
+  const { user } = useAuth();
+  const canManage = canManageTickets(user?.role);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canManage) return;
     const form = event.currentTarget;
     const data = new FormData(form);
     setIsSubmitting(true);
@@ -30,6 +35,8 @@ export function NewTicketForm({ onCreated, onCancel }: NewTicketFormProps) {
       setIsSubmitting(false);
     }
   }
+
+  if (!canManage) return null;
 
   return (
     <form className="ticket-form" onSubmit={event => void handleSubmit(event)}>

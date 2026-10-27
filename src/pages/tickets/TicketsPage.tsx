@@ -4,10 +4,14 @@ import { fmt } from '../../lib/format';
 import { NewTicketForm } from './NewTicketForm';
 import { TicketDetail } from './TicketDetail';
 import { TicketsTable } from './TicketsTable';
+import { useAuth } from '../../auth/AuthContext';
+import { canManageTickets } from '../../routes/permissions';
 
 const PAGE_SIZE = 25;
 
 export function TicketsPage() {
+  const { user } = useAuth();
+  const canManage = canManageTickets(user?.role);
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -54,12 +58,12 @@ export function TicketsPage() {
             <div className="card-title">Tickets de soporte</div>
             <div className="card-sub">{data ? `${fmt(data.total)} tickets · página ${data.page}` : 'Cargando tickets...'}</div>
           </div>
-          <button className="action-button" type="button" onClick={() => setShowNewForm(value => !value)}>
+          {canManage && <button className="action-button" type="button" onClick={() => setShowNewForm(value => !value)}>
             Crear ticket
-          </button>
+          </button>}
         </div>
 
-        {showNewForm && (
+        {canManage && showNewForm && (
           <NewTicketForm
             onCancel={() => setShowNewForm(false)}
             onCreated={() => {

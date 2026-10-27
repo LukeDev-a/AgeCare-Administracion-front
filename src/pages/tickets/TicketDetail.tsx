@@ -13,6 +13,8 @@ import {
 import { fmt, ticketDate } from '../../lib/format';
 import { roleLabel } from '../../lib/roleMeta';
 import { TICKET_CATEGORY_NAMES, TICKET_PRIORITY_META, TICKET_STATUS_META } from '../../lib/ticketMeta';
+import { useAuth } from '../../auth/AuthContext';
+import { canManageTickets } from '../../routes/permissions';
 
 interface TicketDetailProps {
   ticketId: string;
@@ -20,6 +22,8 @@ interface TicketDetailProps {
 }
 
 export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
+  const { user } = useAuth();
+  const canManage = canManageTickets(user?.role);
   const [ticket, setTicket] = useState<TicketDetailData | null>(null);
   const [replies, setReplies] = useState<TicketReply[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -36,7 +40,7 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
     try {
       const [ticketData, agentsData, repliesData] = await Promise.all([
         fetchTicketDetail(ticketId),
-        fetchAgents(),
+        canManage ? fetchAgents() : Promise.resolve([]),
         fetchTicketReplies(ticketId),
       ]);
       setTicket(ticketData);
@@ -53,9 +57,10 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
     setTicket(null);
     void loadDetail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticketId]);
+  }, [ticketId, canManage]);
 
   async function handleSaveStatus() {
+    if (!canManage) return;
     setIsSaving(true);
     try {
       await updateTicket(ticketId, statusValue, assigneeValue || null);
@@ -70,6 +75,7 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
 
   async function handleSendReply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canManage) return;
     setIsSendingReply(true);
     try {
       await createReply(ticketId, replyBody, replyInternal);
@@ -134,7 +140,10 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
       <div className="ticket-detail-label">Descripción</div>
       <div className="ticket-description" style={{ marginTop: 6 }}>{ticket.description}</div>
 
-      <div className="tickets-toolbar" style={{ marginTop: 18, marginBottom: 0 }}>
+      <div className="ticket-detail-label" style={{ marginTop: 14 }}>Responsable</div>
+      <div className="ticket-detail-value">{ticket.assigned_to?.name ?? 'Sin asignar'}</div>
+
+      {canManage && <div className="tickets-toolbar" style={{ marginTop: 18, marginBottom: 0 }}>
         <label className="ticket-detail-label" htmlFor="ticket-status-update">Cambiar estado</label>
         <select id="ticket-status-update" value={statusValue} onChange={event => setStatusValue(event.target.value as TicketStatus)}>
           <option value="open">Abierto</option>
@@ -153,7 +162,7 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
         <button className="action-button" type="button" disabled={isSaving} onClick={() => void handleSaveStatus()}>
           {isSaving ? 'Guardando...' : 'Guardar cambios'}
         </button>
-      </div>
+      </div>}
 
       <div className="ticket-replies">
         <div className="ticket-detail-label">Historial de respuestas</div>
@@ -166,7 +175,7 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
             <div className="ticket-reply-body">{reply.body}</div>
           </div>
         ))}
-        <form className="ticket-form" style={{ marginTop: 14 }} onSubmit={event => void handleSendReply(event)}>
+        {canManage && <form className="ticket-form" style={{ marginTop: 14 }} onSubmit={event => void handleSendReply(event)}>
           <label className="wide">
             Nueva respuesta
             <textarea
@@ -191,7 +200,7 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
               {isSendingReply ? 'Enviando...' : 'Enviar respuesta'}
             </button>
           </div>
-        </form>
+        </form>}
       </div>
     </div>
   );

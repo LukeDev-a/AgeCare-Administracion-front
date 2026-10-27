@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { archiveProduct, updateProduct, type Product } from '../../api/marketplace';
 import { MARKET_STATUS_META } from '../../lib/marketMeta';
+import { useAuth } from '../../auth/AuthContext';
+import { canManageMarketplace } from '../../routes/permissions';
 
 interface ProductDetailProps {
   product: Product;
@@ -8,6 +10,8 @@ interface ProductDetailProps {
 }
 
 export function ProductDetail({ product, onChanged }: ProductDetailProps) {
+  const { user } = useAuth();
+  const canManage = canManageMarketplace(user?.role);
   const [name, setName] = useState(product.name);
   const [category, setCategory] = useState(product.category);
   const [vendor, setVendor] = useState(product.vendor);
@@ -28,6 +32,7 @@ export function ProductDetail({ product, onChanged }: ProductDetailProps) {
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canManage) return;
     setIsSaving(true);
     try {
       await updateProduct(product.id, {
@@ -47,6 +52,7 @@ export function ProductDetail({ product, onChanged }: ProductDetailProps) {
   }
 
   async function handleArchive() {
+    if (!canManage) return;
     setIsArchiving(true);
     try {
       await archiveProduct(product.id);
@@ -69,7 +75,7 @@ export function ProductDetail({ product, onChanged }: ProductDetailProps) {
         </div>
         <span className={`chip ${status.className}`}>{status.label}</span>
       </div>
-      <form className="ticket-form" onSubmit={event => void handleSave(event)}>
+      {canManage ? <form className="ticket-form" onSubmit={event => void handleSave(event)}>
         <label>
           Nombre
           <input value={name} onChange={event => setName(event.target.value)} minLength={3} maxLength={160} required />
@@ -107,7 +113,16 @@ export function ProductDetail({ product, onChanged }: ProductDetailProps) {
             {isArchiving ? 'Archivando...' : 'Archivar'}
           </button>
         </div>
-      </form>
+      </form> : <div className="ticket-detail-grid">
+        {[
+          ['Nombre', product.name], ['Categoría', product.category], ['Proveedor', product.vendor],
+          ['Precio CLP', product.price_clp == null ? 'Sin datos' : product.price_clp.toLocaleString('es-CL')],
+          ['Enlace externo', product.external_url], ['Imagen', product.image_url || 'Sin imagen'],
+        ].map(([label, value]) => <div key={label}>
+          <div className="ticket-detail-label">{label}</div>
+          <div className="ticket-detail-value" style={{ overflowWrap: 'anywhere' }}>{value}</div>
+        </div>)}
+      </div>}
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { createProduct } from '../../api/marketplace';
+import { useAuth } from '../../auth/AuthContext';
+import { canManageMarketplace } from '../../routes/permissions';
 
 interface NewProductFormProps {
   onCreated: () => void;
@@ -7,10 +9,13 @@ interface NewProductFormProps {
 }
 
 export function NewProductForm({ onCreated, onCancel }: NewProductFormProps) {
+  const { user } = useAuth();
+  const canManage = canManageMarketplace(user?.role);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canManage) return;
     const form = event.currentTarget;
     const data = new FormData(form);
     const priceRaw = String(data.get('price_clp') ?? '').trim();
@@ -33,6 +38,8 @@ export function NewProductForm({ onCreated, onCancel }: NewProductFormProps) {
       setIsSubmitting(false);
     }
   }
+
+  if (!canManage) return null;
 
   return (
     <form className="ticket-form" onSubmit={event => void handleSubmit(event)}>

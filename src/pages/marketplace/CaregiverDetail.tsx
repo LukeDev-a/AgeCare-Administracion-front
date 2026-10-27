@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { updateCaregiverStatus, type Caregiver } from '../../api/caregivers';
 import { CAREGIVER_STATUS_META } from '../../lib/caregiverMeta';
 import { fmt } from '../../lib/format';
+import { useAuth } from '../../auth/AuthContext';
+import { canManageMarketplace } from '../../routes/permissions';
 
 interface CaregiverDetailProps {
   caregiver: Caregiver;
@@ -9,9 +11,12 @@ interface CaregiverDetailProps {
 }
 
 export function CaregiverDetail({ caregiver, onChanged }: CaregiverDetailProps) {
+  const { user } = useAuth();
+  const canManage = canManageMarketplace(user?.role);
   const [pendingAction, setPendingAction] = useState<'approved' | 'suspended' | null>(null);
 
   async function handleUpdate(status: 'approved' | 'suspended') {
+    if (!canManage) return;
     setPendingAction(status);
     try {
       await updateCaregiverStatus(caregiver.caregiver_id, status);
@@ -54,7 +59,7 @@ export function CaregiverDetail({ caregiver, onChanged }: CaregiverDetailProps) 
           </div>
         </div>
       </div>
-      <div className="ticket-form-actions">
+      {canManage && <div className="ticket-form-actions">
         <button
           className="action-button"
           type="button"
@@ -71,7 +76,7 @@ export function CaregiverDetail({ caregiver, onChanged }: CaregiverDetailProps) 
         >
           {pendingAction === 'suspended' ? 'Suspendiendo...' : 'Suspender'}
         </button>
-      </div>
+      </div>}
     </div>
   );
 }

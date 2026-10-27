@@ -4,8 +4,12 @@ import { fmt } from '../../lib/format';
 import { NewProductForm } from './NewProductForm';
 import { ProductDetail } from './ProductDetail';
 import { ProductsTable } from './ProductsTable';
+import { useAuth } from '../../auth/AuthContext';
+import { canManageMarketplace } from '../../routes/permissions';
 
 export function ProductsPanel() {
+  const { user } = useAuth();
+  const canManage = canManageMarketplace(user?.role);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
@@ -50,12 +54,12 @@ export function ProductsPanel() {
             <div className="card-title">Catálogo de productos</div>
             <div className="card-sub">{data ? `${fmt(data.total)} productos · página ${data.page}` : 'Cargando productos...'}</div>
           </div>
-          <button className="action-button" type="button" onClick={() => setShowNewForm(value => !value)}>
+          {canManage && <button className="action-button" type="button" onClick={() => setShowNewForm(value => !value)}>
             Crear producto
-          </button>
+          </button>}
         </div>
 
-        {showNewForm && (
+        {canManage && showNewForm && (
           <NewProductForm
             onCancel={() => setShowNewForm(false)}
             onCreated={() => {

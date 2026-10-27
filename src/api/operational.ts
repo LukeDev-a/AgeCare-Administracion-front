@@ -1,6 +1,7 @@
 import { apiFetch } from './client';
 
 export type OpsStatusKey = 'operational' | 'degraded' | 'outage';
+export type OpsWindow = '1h' | '24h' | '7d';
 
 export interface OpsComponent {
   key: string;
@@ -10,21 +11,33 @@ export interface OpsComponent {
   latency_p50_ms: number | null;
   latency_p95_ms: number | null;
   note?: string | null;
+  checked_at: string;
+  data_origin: string;
+  measurement_kind: string;
 }
 
 export interface OpsStatus {
-  overall: OpsStatusKey;
-  checked_at: string;
+  overall: OpsStatusKey | null;
+  checked_at: string | null;
   components: OpsComponent[];
 }
 
 export interface LatencyComponent {
+  key: string;
   name: string;
+  p50_ms: number;
   p95_ms: number;
+  sample_count: number;
+  computed_at: string;
+  data_origin: string;
+  measurement_kind: string;
 }
 
 export interface OpsLatency {
+  window: OpsWindow;
   components: LatencyComponent[];
+  missing_components: string[];
+  computed_at: string | null;
 }
 
 export interface OpsIncident {
@@ -39,24 +52,36 @@ export interface OpsIncidents {
 }
 
 export interface CriticalProcess {
+  key: string;
   name: string;
   chain: string;
   p95_seconds: number;
   success_24h: number;
   status: OpsStatusKey;
+  computed_at: string;
+  data_origin: string;
+  execution_kind: string;
 }
 
 export interface CriticalProcesses {
   processes: CriticalProcess[];
+  computed_at: string | null;
 }
 
 async function getJson<T>(path: string): Promise<T> {
   const response = await apiFetch(path);
-  if (!response.ok) throw new Error('No fue posible cargar el estado operativo.');
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error?.message ?? 'No fue posible cargar el estado operativo.');
+  }
   return response.json() as Promise<T>;
 }
 
 export const fetchOpsStatus = () => getJson<OpsStatus>('/ops/status');
-export const fetchOpsLatency = () => getJson<OpsLatency>('/ops/latency?window=1h');
+export const fetchOpsLatency = (window: OpsWindow = '1h', components: string[] = []) => {
+  const params = new URLSearchParams({ window });
+  components.forEach(key => params.append('components', key));
+  return getJson<OpsLatency>(`/ops/latency?${params}`);
+};
 export const fetchOpsIncidents = () => getJson<OpsIncidents>('/ops/incidents?days=30');
 export const fetchCriticalProcesses = () => getJson<CriticalProcesses>('/ops/critical-processes');

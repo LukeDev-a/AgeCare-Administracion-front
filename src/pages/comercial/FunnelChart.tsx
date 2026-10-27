@@ -5,6 +5,7 @@ import { fmt, percent } from '../../lib/format';
 const FUNNEL_COLORS = ['#86b6ef', '#3987e5', '#1c5cab', '#0d366b'];
 
 export function FunnelChart({ stages }: { stages: FunnelStage[] }) {
+  if (stages.some(stage => stage.users == null)) return <div>Sin datos comparables para representar todas las etapas.</div>;
   const data = stages.map(stage => ({ name: stage.name, users: stage.users, rate: stage.rate_vs_first }));
 
   return (
@@ -15,7 +16,7 @@ export function FunnelChart({ stages }: { stages: FunnelStage[] }) {
         <Tooltip
             formatter={(value, _name, item) => {
             const rate = (item.payload as { rate: number | null }).rate;
-            return [`${fmt(Number(value))}${rate != null ? ' · ' + percent(rate) : ''}`, 'Usuarios'];
+            return [`${fmt(Number(value))}${rate != null ? ' · ' + percent(rate) + ' de las cuentas creadas' : ''}`, 'Cuentas'];
             }}
         />
         <Bar dataKey="users" radius={[0, 6, 6, 0]}>

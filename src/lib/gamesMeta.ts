@@ -1,3 +1,7 @@
+export function canManageGames(role?: string): boolean {
+  return role === 'admin' || role === 'editor';
+}
+
 export const GAME_TYPE_LABELS: Record<string, string> = {
   game: '🎮 Juego',
   app: '📱 App',

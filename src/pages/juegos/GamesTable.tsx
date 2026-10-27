@@ -2,18 +2,19 @@ import type { GameAppItem } from '../../api/gamesApps';
 import { GAME_TIER_LABELS, GAME_TYPE_LABELS } from '../../lib/gamesMeta';
 
 interface GamesTableProps {
+  canManage: boolean;
   items: GameAppItem[];
   onToggle: (item: GameAppItem) => void;
   onEdit: (item: GameAppItem) => void;
   onDelete: (item: GameAppItem) => void;
 }
 
-export function GamesTable({ items, onToggle, onEdit, onDelete }: GamesTableProps) {
+export function GamesTable({ items, canManage, onToggle, onEdit, onDelete }: GamesTableProps) {
   if (items.length === 0) {
     return (
       <table className="data">
         <tbody>
-          <tr><td colSpan={7}>No hay juegos ni aplicaciones registradas aún.</td></tr>
+          <tr><td colSpan={canManage ? 7 : 6}>No hay juegos ni aplicaciones registradas aún.</td></tr>
         </tbody>
       </table>
     );
@@ -29,7 +30,7 @@ export function GamesTable({ items, onToggle, onEdit, onDelete }: GamesTableProp
           <th>Plan mínimo</th>
           <th className="num">Destacado</th>
           <th className="num">Estado</th>
-          <th>Acciones</th>
+          {canManage && <th>Acciones</th>}
         </tr>
       </thead>
       <tbody>
@@ -44,23 +45,25 @@ export function GamesTable({ items, onToggle, onEdit, onDelete }: GamesTableProp
             <td>{GAME_TIER_LABELS[item.min_tier] ?? item.min_tier}</td>
             <td className="num">{item.featured ? '★ Sí' : 'No'}</td>
             <td className="num">
-              <button
+              {canManage ? <button
                 className={`chip ${item.is_active ? 'ok' : 'neutral'}`}
                 style={{ border: 'none', cursor: 'pointer' }}
                 type="button"
                 onClick={() => onToggle(item)}
               >
                 {item.is_active ? 'Activo' : 'Inactivo'}
-              </button>
+              </button> : <span className={`chip ${item.is_active ? 'ok' : 'neutral'}`}>
+                {item.is_active ? 'Activo' : 'Inactivo'}
+              </span>}
             </td>
-            <td>
+            {canManage && <td>
               <button className="action-button" type="button" onClick={() => onEdit(item)} style={{ marginRight: 8 }}>
                 Editar
               </button>
               <button className="action-button" type="button" onClick={() => onDelete(item)}>
                 Eliminar
               </button>
-            </td>
+            </td>}
           </tr>
         ))}
       </tbody>

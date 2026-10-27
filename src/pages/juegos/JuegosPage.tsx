@@ -3,8 +3,12 @@ import { deleteGameApp, fetchGamesApps, toggleGameAppStatus, type GameAppItem } 
 import { GameFormModal } from './GameFormModal';
 import { GamesPreviewPanel } from './GamesPreviewPanel';
 import { GamesTable } from './GamesTable';
+import { useAuth } from '../../auth/AuthContext';
+import { canManageGames } from '../../lib/gamesMeta';
 
 export function JuegosPage() {
+  const { user } = useAuth();
+  const canManage = canManageGames(user?.role);
   const [typeFilter, setTypeFilter] = useState('all');
   const [items, setItems] = useState<GameAppItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,6 +44,7 @@ export function JuegosPage() {
   }
 
   async function handleToggle(item: GameAppItem) {
+  if (!canManage) return;
   try {
     await toggleGameAppStatus(item.id);
     refresh();
@@ -49,6 +54,7 @@ export function JuegosPage() {
   }
 
   async function handleDelete(item: GameAppItem) {
+    if (!canManage) return;
     if (!confirm(`¿Eliminar "${item.title}"?`)) return;
     try {
       await deleteGameApp(item.id);
@@ -62,25 +68,25 @@ export function JuegosPage() {
     <>
       <div className="filter-row">
         <button className="action-button" type="button" onClick={() => setShowPreview(value => !value)}>
-          {showPreview ? 'Modificar juegos' : 'Vista previa y rotación →'}
+          {showPreview ? (canManage ? 'Modificar juegos' : 'Ver catálogo') : (canManage ? 'Vista previa y rotación →' : 'Vista previa →')}
         </button>
       </div>
 
       {showPreview ? (
-        <GamesPreviewPanel items={items} onChanged={refresh} />
+        <GamesPreviewPanel items={items} canManage={canManage} onChanged={refresh} />
       ) : (
         <div className="card">
           <div className="card-head">
             <div>
               <div className="card-title">Catálogo de juegos y aplicaciones</div>
-              <div className="card-sub">Administra los módulos de estimulación cognitiva y bienestar ofrecidos en AgeCare.</div>
+              <div className="card-sub">{canManage ? 'Administra' : 'Consulta'} los módulos de estimulación cognitiva y bienestar ofrecidos en AgeCare.</div>
             </div>
             <select value={typeFilter} onChange={event => setTypeFilter(event.target.value)}>
               <option value="all">Todos los tipos</option>
               <option value="game">Solo juegos</option>
               <option value="app">Solo apps</option>
             </select>
-            <button
+            {canManage && <button
               className="action-button"
               type="button"
               onClick={() => {
@@ -89,13 +95,14 @@ export function JuegosPage() {
               }}
             >
               + Nuevo ítem
-            </button>
+            </button>}
           </div>
           <div style={{ overflowX: 'auto' }}>
             {error && <div className="placeholder-box" style={{ padding: 30 }}>{error}</div>}
             {!error && isLoading && <div className="placeholder-box" style={{ padding: 30 }}>Cargando catálogo...</div>}
             {!error && !isLoading && (
               <GamesTable
+                canManage={canManage}
                 items={items}
                 onToggle={item => void handleToggle(item)}
                 onEdit={item => {
@@ -109,7 +116,7 @@ export function JuegosPage() {
         </div>
       )}
 
-      {showModal && (
+      {canManage && showModal && (
         <GameFormModal
           editingItem={editingItem}
           onClose={() => setShowModal(false)}

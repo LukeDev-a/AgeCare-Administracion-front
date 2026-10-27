@@ -6,6 +6,7 @@ const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 let user, pathname;
+let isAuthenticated = true;
 function load(path, dependencies = {}) {
   const context = { exports: {}, require: name => dependencies[name] ?? require(name) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
@@ -15,7 +16,7 @@ function load(path, dependencies = {}) {
 }
 const permissions = load('src/routes/permissions.ts');
 const dependencies = {
-  '../auth/AuthContext': { useAuth: () => ({ user, isAuthenticated: true, isRestoring: false, logout: () => {} }) },
+  '../auth/AuthContext': { useAuth: () => ({ user, isAuthenticated, isRestoring: false, logout: () => {} }) },
   '../routes/permissions': permissions,
   'react-router-dom': {
     useLocation: () => ({ pathname }),
@@ -32,6 +33,19 @@ const roles = {
   editor: ['games', 'content', 'marketplace'],
   moderator: ['games', 'marketplace', 'moderation'],
 };
+
+test('RF03: tras expirar la sesión una ruta protegida dirige al login y no muestra su contenido', () => {
+  isAuthenticated = false;
+  user = null;
+  pathname = '/juegos';
+  try {
+    const route = renderToStaticMarkup(React.createElement(ProtectedRoute, null, 'CONTENIDO PROTEGIDO'));
+    assert.ok(route.includes('data-redirect="/login"'));
+    assert.ok(!route.includes('CONTENIDO PROTEGIDO'));
+  } finally {
+    isAuthenticated = true;
+  }
+});
 test('el menú renderizado y el acceso directo a rutas respetan los cinco perfiles', () => {
   for (const [role, modules] of Object.entries(roles)) {
     user = { role, full_name: 'Cuenta de prueba', permissions: modules };

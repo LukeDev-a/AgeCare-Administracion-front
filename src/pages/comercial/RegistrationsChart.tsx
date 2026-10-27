@@ -2,15 +2,18 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 
 interface RegistrationsChartProps {
   labels: string[];
-  signups: number[];
-  cancellations: number[];
+  signups: (number | null)[];
+  cancellations: (number | null)[];
 }
 
 export function RegistrationsChart({ labels, signups, cancellations }: RegistrationsChartProps) {
+  if (labels.length !== signups.length || labels.length !== cancellations.length) {
+    return <div role="alert">La fuente entregó series desalineadas. No es posible representar el gráfico.</div>;
+  }
   const data = labels.map((label, index) => ({
     label,
-    Altas: signups[index] ?? 0,
-    Bajas: cancellations[index] ?? 0,
+    Altas: signups[index],
+    Bajas: cancellations[index],
   }));
 
   return (

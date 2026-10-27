@@ -29,7 +29,7 @@ export interface TicketsListResponse {
 
 export interface TicketAssignee {
   admin_id: string;
-  full_name?: string;
+  name: string;
 }
 
 export interface TicketDetailData {
@@ -109,10 +109,9 @@ export async function fetchTicketReplies(ticketId: string): Promise<TicketReply[
 }
 
 export async function fetchAgents(): Promise<Agent[]> {
-  const response = await apiFetch('/users?is_active=true&page=1&page_size=100');
-  if (!response.ok) return [];
-  const data = await response.json();
-  return data.items ?? [];
+  const response = await apiFetch('/support/agents');
+  if (!response.ok) throw new Error('No fue posible cargar los responsables disponibles.');
+  return response.json();
 }
 
 export async function updateTicket(ticketId: string, status: TicketStatus, assignedTo: string | null): Promise<void> {
