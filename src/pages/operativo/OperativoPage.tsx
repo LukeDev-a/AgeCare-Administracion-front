@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { fetchCriticalProcesses, fetchOpsIncidents, fetchOpsLatency, fetchOpsStatus, type OpsWindow } from '../../api/operational';
+import { fetchCriticalProcesses, fetchOpsLatency, fetchOpsStatus, type OpsWindow } from '../../api/operational';
 import { percent } from '../../lib/format';
 import { getOpsStatus } from '../../lib/statusMeta';
 import { OPS_COMPONENTS, opsDate, opsExecution, opsMeasurement, opsOrigin } from '../../lib/operationalMeta';
 import { LatencyChart } from './LatencyChart';
 import { OpsComponentCard } from './OpsComponentCard';
+import { IncidentsPanel } from './IncidentsPanel';
 
 function useRemote<T>(key: string, load: () => Promise<T>) {
   const [state, setState] = useState<{ key: string; data: T | null; error: string }>({ key: '', data: null, error: '' });
@@ -26,7 +27,6 @@ export function OperativoPage() {
   const statusState = useRemote(`status:${reload}`, fetchOpsStatus);
   const latencyState = useRemote(`${window}:${selected.join(',')}:${reload}`, latencyLoad);
   const processState = useRemote(`processes:${reload}`, fetchCriticalProcesses);
-  const incidentsState = useRemote(`incidents:${reload}`, fetchOpsIncidents);
   const status = statusState.data, latency = latencyState.data, processes = processState.data;
   const overall = status?.overall ? getOpsStatus(status.overall) : null;
   return <>
@@ -91,15 +91,6 @@ export function OperativoPage() {
         </tr>)}</tbody>
       </table></div>
     </div>
-    <div className="card">
-      <div className="card-title">Incidentes recientes</div><div className="card-sub">Últimos 30 días</div>
-      {incidentsState.error && <p role="alert">{incidentsState.error}</p>}
-      {!incidentsState.data && !incidentsState.error && <p>Cargando incidentes...</p>}
-      {incidentsState.data && !incidentsState.data.items.length && <p>No hay incidentes recientes.</p>}
-      <ul className="flag-list">{incidentsState.data?.items.map((incident, index) => <li key={index}>
-        <div><div className="fl-t">{incident.title}</div><div className="fl-s">{opsDate(incident.started_at)} · {incident.description}</div>
-          <span className="chip neutral">{{ investigating: 'En investigación', observing: 'En observación', resolved: 'Resuelto', completed: 'Completado' }[incident.status] ?? 'Estado sin identificar'}</span></div>
-      </li>)}</ul>
-    </div>
+    <IncidentsPanel refreshKey={reload} />
   </>;
 }

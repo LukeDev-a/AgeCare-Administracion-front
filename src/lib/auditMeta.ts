@@ -13,6 +13,19 @@ export const AUDIT_ACTION_OPTIONS = [["games.create", "Creó un juego o aplicaci
 AUDIT_ACTION_OPTIONS.push(['staff.delete', 'Eliminó una cuenta de administración']);
 
 AUDIT_ACTION_OPTIONS.push(
+  ['end_users.demo_list', 'Consultó el listado de cuentas de prueba'],
+  ['patients.demo_list', 'Consultó el listado de pacientes de prueba'],
+  ['end_users.demo_read', 'Consultó una cuenta de prueba'],
+  ['patients.demo_read', 'Consultó un paciente de prueba'],
+  ['end_users.demo_deactivate', 'Desactivó una cuenta de prueba'],
+  ['auth.login', 'Inició sesión'],
+  ['auth.login_failed', 'Intento de acceso rechazado'],
+  ['ticket.conversation_read', 'Consultó una conversación de soporte'],
+  ['content.approve', 'Aprobó el texto editorial'],
+  ['content.audio_retry', 'Solicitó regenerar audio'],
+  ['content.candidate_review', 'Revisó una noticia recopilada'],
+  ['content.adaptation_request', 'Solicitó adaptar una noticia'],
+  ['content.collection_request', 'Solicitó recopilar noticias'],
   ['staff.invitation_accept', 'Aceptó la invitación a la consola'],
   ['staff.invitation_resend', 'Reenvió una invitación'],
   ['staff.invitation_cancel', 'Canceló una invitación'],
@@ -20,3 +33,18 @@ AUDIT_ACTION_OPTIONS.push(
   ['staff.mfa_disable', 'Desactivó la verificación en dos pasos'],
   ['staff.mfa_recovery', 'Renovó sus códigos de recuperación'],
 );
+
+export const AUDIT_ENTITIES = [
+  ['demo_app_account', 'Cuenta de prueba de la app'], ['demo_app_patient', 'Paciente de prueba'],
+  ['admin_user', 'Cuenta de administración'], ['game_app', 'Juego'], ['ticket', 'Ticket'],
+  ['content_item', 'Contenido'], ['news_candidate', 'Noticia recopilada'], ['content_job', 'Trabajo de contenido'],
+  ['product', 'Producto'], ['caregiver_profile', 'Perfil de cuidador'],
+  ['moderation_item', 'Moderación'], ['incident', 'Incidente'],
+  ['system_setting', 'Parámetro de configuración'], ['legal_version', 'Documento legal'],
+];
+
+export function auditReason(reason?: string): string {
+  return ({ INVALID_CREDENTIALS: 'Correo o contraseña incorrectos', ACCOUNT_LOCKED: 'Cuenta bloqueada temporalmente',
+    ADMIN_DISABLED: 'Cuenta desactivada', OTP_REQUIRED: 'Falta el segundo factor', OTP_INVALID: 'Segundo factor incorrecto o expirado',
+    MFA_ENROLLMENT_REQUIRED: 'Debe configurar la verificación en dos pasos' } as Record<string, string>)[reason || ''] || '—';
+}

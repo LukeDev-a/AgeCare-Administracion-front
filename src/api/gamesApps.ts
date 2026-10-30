@@ -14,6 +14,10 @@ export interface GameAppItem {
   is_active: boolean;
   featured: boolean;
   target_url?: string | null;
+  resource_kind?: 'local' | 'external';
+  created_at?: string;
+  updated_at?: string;
+  created_by_name?: string | null;
 }
 
 export interface ActiveGamesOut {
@@ -37,21 +41,24 @@ export interface GameAppPayload {
 async function parseErrorMessage(response: Response, fallback: string): Promise<string> {
   try {
     const data = await response.json();
-    return data?.detail ?? data?.error?.message ?? fallback;
+    return typeof data?.detail === 'string' ? data.detail : data?.error?.message ?? fallback;
   } catch {
     return fallback;
   }
 }
 
-export async function fetchGamesApps(itemType: string): Promise<GameAppItem[]> {
-  const path = itemType === 'all' ? '/games-apps/?page_size=200' : `/games-apps/?item_type=${itemType}&page_size=200`;
+export async function fetchGamesApps(itemType: string, state = ''): Promise<GameAppItem[]> {
+  const query = new URLSearchParams();
+  if (itemType !== 'all') query.set('item_type', itemType);
+  if (state) query.set('is_active', state);
+  const path = `/games-apps/?${query}`;
   const response = await apiFetch(path);
   if (!response.ok) throw new Error('No fue posible cargar el catálogo de juegos y apps.');
   const data = await response.json();
   return Array.isArray(data) ? data : (data.items ?? []);
 }
 
-export async function fetchActiveGamesApps(): Promise<ActiveGamesOut> {
+export async function fetchActiveGamesApps(): Promise<GameAppItem[]> {
   const response = await apiFetch('/games-apps/active');
   if (!response.ok) throw new Error('No fue posible cargar los módulos activos.');
   return response.json();
@@ -62,7 +69,7 @@ export async function createGameApp(payload: GameAppPayload): Promise<void> {
   if (!response.ok) throw new Error(await parseErrorMessage(response, 'No fue posible crear el elemento.'));
 }
 
-export async function updateGameApp(id: string, payload: GameAppPayload): Promise<void> {
+export async function updateGameApp(id: string, payload: Partial<GameAppPayload>): Promise<void> {
   const response = await apiFetch(`/games-apps/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
   if (!response.ok) throw new Error(await parseErrorMessage(response, 'No fue posible guardar los cambios.'));
 }

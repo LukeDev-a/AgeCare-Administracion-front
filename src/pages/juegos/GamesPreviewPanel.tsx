@@ -170,6 +170,7 @@ export function GamesPreviewPanel({ items, canManage, onChanged }: GamesPreviewP
               <div>
                 <div className="card-title">{selected.title}</div>
                 <div className="card-sub" style={{ fontFamily: 'monospace' }}>{selected.target_url}</div>
+                {selected.resource_kind === 'external' && <p className="mini-note">Juego externo. Desactivarlo lo retira del catálogo, pero no bloquea la otra web ni detiene sus partidas.</p>}
               </div>
               {selected.target_url && (
                 <a href={selected.target_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 600, fontSize: 12 }}>

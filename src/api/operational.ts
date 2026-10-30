@@ -41,14 +41,26 @@ export interface OpsLatency {
 }
 
 export interface OpsIncident {
+  id: string;
   title: string;
   description: string;
   started_at: string;
   status: 'resolved' | 'completed' | string;
+  component_key: string | null;
+  severity: string;
+  resolution: string | null;
+  is_maintenance: boolean;
+  resolved_at: string | null;
+  created_by: string | null;
+  updated_at: string;
+  notification_status: string;
 }
 
 export interface OpsIncidents {
   items: OpsIncident[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 export interface CriticalProcess {

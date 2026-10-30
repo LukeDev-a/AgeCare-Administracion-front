@@ -1,145 +1,98 @@
-import { useEffect, useState } from 'react';
-import {
-  fetchFeatureAdoption,
-  fetchFeatureAlerts,
-  fetchTopFeatures,
-  type FeatureAdoption,
-  type FeatureAlerts,
-  type TopFeatures,
-} from '../../api/features';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { fetchFeatureAdoption, fetchFeatureAlerts, fetchTopFeatures } from '../../api/features';
 import { PeriodSelector } from '../../components/PeriodSelector';
 import { FEATURE_ROLE_COLORS, featureRoleName } from '../../lib/featureRoleMeta';
 import { percent } from '../../lib/format';
+import { adoptionPercent } from '../../lib/featureCalculationMeta';
+import { usersSupportDate } from '../../lib/usersSupportMeta';
 import { HeatmapLegend } from './HeatmapLegend';
 import { HeatmapTable } from './HeatmapTable';
+import { FeatureAlertList } from './FeatureAlertList';
 
-const PERIODS = [
-  { key: 7, label: 'Últimos 7 días' },
-  { key: 30, label: 'Últimos 30 días' },
-  { key: 90, label: 'Últimos 90 días' },
-] as const;
-
-export function FuncionalPage() {
-  const [days, setDays] = useState<number>(30);
-  const [adoption, setAdoption] = useState<FeatureAdoption | null>(null);
-  const [top, setTop] = useState<TopFeatures | null>(null);
-  const [alerts, setAlerts] = useState<FeatureAlerts | null>(null);
-  const [error, setError] = useState('');
-
+const PERIODS = [{ key: 7, label: 'Últimos 7 días' }, { key: 30, label: 'Últimos 30 días' }, { key: 90, label: 'Últimos 90 días' }] as const;
+function useRemote<T>(key: string, load: () => Promise<T>) {
+  const [state, setState] = useState<{ key: string; data: T | null; error: string }>({ key: '', data: null, error: '' });
   useEffect(() => {
     let cancelled = false;
-    setError('');
-    Promise.all([fetchFeatureAdoption(days), fetchTopFeatures(days), fetchFeatureAlerts(days)])
-      .then(([adoptionData, topData, alertsData]) => {
-        if (cancelled) return;
-        setAdoption(adoptionData);
-        setTop(topData);
-        setAlerts(alertsData);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'No fue posible cargar el uso por funcionalidad.');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [days]);
-
-  return (
-    <>
-      <div className="filter-row">
-        <span className="filter-label">Periodo</span>
-        <PeriodSelector periods={PERIODS} value={days} onChange={setDays} />
-      </div>
-
-      <div className="grid" style={{ gridTemplateColumns: '1.5fr 1fr' }}>
-        <div className="card">
-          <div className="card-head">
-            <div>
-              <div className="card-title">Adopción de funcionalidades por perfil</div>
-              <div className="card-sub">
-                {adoption
-                  ? `% de usuarios activos del perfil que usaron la función · últimos ${adoption.days} días`
-                  : '% de usuarios activos del perfil que usaron la función · últimos 30 días'}
-              </div>
-            </div>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            {error && error}
-            {!error && !adoption && 'Cargando adopción...'}
-            {adoption && <HeatmapTable data={adoption} />}
-          </div>
-          {adoption && <HeatmapLegend />}
-        </div>
-
-        <div>
-          <div className="card">
-            <div className="card-head">
-              <div>
-                <div className="card-title">Más usadas por perfil</div>
-                <div className="card-sub">Función nº 1 de cada rol · ventana seleccionada</div>
-              </div>
-            </div>
-            <ul className="flag-list">
-              {!error && !top && <li>Cargando funcionalidades...</li>}
-              {error && <li>{error}</li>}
-              {top?.top_by_role.map(item => {
-                const feature = item.features[0];
-                if (!feature) {
-                  return (
-                    <li key={item.role}>
-                      <span className="fl-t">{featureRoleName(item.role)}</span>
-                      <div className="fl-s">Sin datos de adopción.</div>
-                    </li>
-                  );
-                }
-                return (
-                  <li key={item.role}>
-                    <span className="swatch" style={{ background: FEATURE_ROLE_COLORS[item.role], marginTop: 4 }} />
-                    <div>
-                      <div className="fl-t">
-                        {featureRoleName(item.role)} → {feature.name} ({percent(feature.adoption)})
-                      </div>
-                      <div className="fl-s">Mayor adopción registrada para este perfil en la ventana consultada.</div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-
-          <div className="card">
-            <div className="card-head">
-              <div>
-                <div className="card-title">Alertas de adopción</div>
-                <div className="card-sub">
-                  {alerts ? `Funciones infrautilizadas · umbral ${percent(alerts.threshold)}` : 'Funciones infrautilizadas · últimos 30 días'}
-                </div>
-              </div>
-            </div>
-            <ul className="flag-list">
-              {!error && !alerts && <li>Cargando alertas...</li>}
-              {error && <li>{error}</li>}
-              {alerts && alerts.alerts.length === 0 && <li>No hay alertas de adopción.</li>}
-              {alerts?.alerts.slice(0, 6).map((alert, index) => {
-                const values = alert.adoption.map(value => percent(value)).join(' / ');
-                const roles = alert.roles.map(role => featureRoleName(role)).join(' / ');
-                return (
-                  <li key={index}>
-                    <span className={`chip ${alert.expected_low ? 'neutral' : 'serious'}`}>▼ {values}</span>
-                    <div>
-                      <div className="fl-t">
-                        {alert.name} ({roles})
-                      </div>
-                      <div className="fl-s">{alert.note || 'Función con adopción inferior al umbral configurado.'}</div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </div>
-      </div>
-    </>
-  );
+    load().then(data => { if (!cancelled) setState({ key, data, error: '' }); })
+      .catch((error: unknown) => { if (!cancelled) setState({ key, data: null,
+        error: error instanceof Error ? error.message : 'No fue posible consultar los datos.' }); });
+    return () => { cancelled = true; };
+  }, [key, load]);
+  return state.key === key ? state : { key, data: null, error: '' };
+}
+export function FuncionalPage() {
+  const [days, setDays] = useState<number>(30);
+  const [limit, setLimit] = useState(1);
+  const [threshold, setThreshold] = useState(.15);
+  const [reload, setReload] = useState(0);
+  const adoptionLoad = useCallback(() => fetchFeatureAdoption(days), [days]);
+  const topLoad = useCallback(() => fetchTopFeatures(days, limit), [days, limit]);
+  const alertsLoad = useCallback(() => fetchFeatureAlerts(days, threshold), [days, threshold]);
+  const adoptionState = useRemote(`adoption:${days}:${reload}`, adoptionLoad);
+  const topState = useRemote(`top:${days}:${limit}:${reload}`, topLoad);
+  const alertsState = useRemote(`alerts:${days}:${threshold}:${reload}`, alertsLoad);
+  const adoption = adoptionState.data, top = topState.data, alerts = alertsState.data;
+  function changeThreshold(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = Number(new FormData(event.currentTarget).get('threshold'));
+    if (Number.isFinite(value) && value >= 1 && value <= 50) setThreshold(value / 100);
+  }
+  return <>
+    <div className="filter-row"><span className="filter-label">Período</span>
+      <PeriodSelector periods={PERIODS} value={days} onChange={setDays} />
+      <button className="action-button" type="button" onClick={() => setReload(value => value+1)}>Actualizar vista</button>
+    </div>
+    <p className="mini-note">Adopción: porcentaje de usuarios activos de cada perfil que usaron una función en el mismo período.</p>
+    <p className="mini-note">No aplica indica que la función no corresponde al perfil. No calculable indica que no se puede obtener un porcentaje con los datos disponibles.</p>
+    <section className="card">
+      <div className="card-title">Adopción de funcionalidades por perfil</div>
+      {adoptionState.error && <p role="alert">{adoptionState.error}</p>}
+      {!adoption && !adoptionState.error && <p>Cargando adopción...</p>}
+      {adoption && <>
+        <p className="card-sub">Últimos {adoption.days} días · Calculado: {usersSupportDate(adoption.computed_at)} · Santiago</p>
+        {adoption.features.some(feature => !feature.calculation_details) && <p role="status">El estado del cálculo no está disponible en esta respuesta; los porcentajes recibidos no permiten distinguir todos los casos.</p>}
+        <div style={{ overflowX: 'auto' }}><HeatmapTable data={adoption} /></div>
+        {!!adoption.features.length && !!adoption.roles.length && <HeatmapLegend statesAvailable={adoption.features.every(feature => !!feature.calculation_details)} />}
+      </>}
+    </section>
+    <div className="grid g2">
+      <section className="card">
+        <div className="card-title">Más utilizadas por perfil</div>
+        <label>Funciones a mostrar por perfil <select value={limit} onChange={event => setLimit(Number(event.target.value))}>
+          {[1, 2, 3, 4, 5].map(value => <option key={value} value={value}>{value}</option>)}
+        </select></label>
+        {topState.error && <p role="alert">{topState.error}</p>}
+        {!top && !topState.error && <p>Cargando ranking...</p>}
+        {top && top.calculable_only !== true && <p role="status">No se puede verificar si este ranking excluye resultados no calculables. Actualiza la API para consultar el ranking validado.</p>}
+        {top?.calculable_only === true && <>
+          <p className="card-sub">Últimos {days} días · Calculado: {usersSupportDate(top.computed_at)} · Santiago</p>
+          <p className="mini-note">Solo porcentajes calculables, de mayor a menor; se conserva el cero válido.</p>
+          {!top.top_by_role.length && <p>Sin datos de funcionalidades por perfil.</p>}
+          {top.top_by_role.map(item => <div key={item.role} style={{ marginTop: 14 }}>
+            <h3><span className="swatch" style={{ background: FEATURE_ROLE_COLORS[item.role] ?? 'var(--ink)' }} />{featureRoleName(item.role)}</h3>
+            {!item.features.length ? <p>Sin resultados de adopción para este perfil.</p> : <ol>
+              {item.features.map(feature => <li key={feature.feature_key}>{feature.name}: {feature.adoption == null ? 'Sin datos' : adoptionPercent(feature.adoption)}</li>)}
+            </ol>}
+          </div>)}
+        </>}
+      </section>
+      <section className="card">
+        <div className="card-title">Alertas de uso bajo</div>
+        <form className="tickets-toolbar" onSubmit={changeThreshold}>
+          <label>Umbral de adopción (%)<input type="number" name="threshold" min={1} max={50} step="any" defaultValue={15} required /></label>
+          <button className="action-button" type="submit">Aplicar umbral</button>
+        </form>
+        {alertsState.error && <p role="alert">{alertsState.error}</p>}
+        {!alerts && !alertsState.error && <p>Cargando alertas...</p>}
+        {alerts && alerts.calculable_only !== true && <p role="status">No se puede verificar si esta respuesta excluye porcentajes no calculables. Actualiza la API para consultar alertas validadas.</p>}
+        {alerts?.calculable_only === true && <>
+          <p className="card-sub">Últimos {days} días · Por debajo de {percent(alerts.threshold)} · Calculado: {usersSupportDate(alerts.computed_at)} · Santiago</p>
+          <h3>Uso bajo a revisar</h3><FeatureAlertList alerts={alerts.alerts.filter(alert => !alert.expected_low)} expected={false} />
+          <h3>Uso bajo esperado</h3><p className="mini-note">Por ejemplo, una función de emergencia puede utilizarse poco sin que eso indique falta de adopción.</p>
+          <FeatureAlertList alerts={alerts.alerts.filter(alert => alert.expected_low)} expected />
+        </>}
+      </section>
+    </div>
+  </>;
 }

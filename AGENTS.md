@@ -9,6 +9,8 @@ React + TypeScript + Vite. Lee [docs/CONTEXTO-TECNICO.md](docs/CONTEXTO-TECNICO.
 - La autorización efectiva está en el backend. Menú y rutas usan los permisos del perfil en `src/routes/permissions.ts`; esto no acredita que todos los botones de modificación se oculten para roles de lectura.
 - Usa los estilos existentes y variables de tema en `src/index.css`. Preserva el comportamiento de tema claro/oscuro.
 - No reconstruyas el rastreo de clics como auditoría. La vista consume cambios de negocio registrados por el backend.
+- Desde fase 17 también muestra logins correctos/fallidos y consultas de conversaciones, autorizados expresamente; conserva esa distinción sin capturar navegación general. Contrato en Requerimientos/fase-17 y docs/auditoria-administrativa.md del backend.
+- /usuarios-app (fase18) es directorio de demostración solo admin, distinto de /usuarios (analítica) y /cuentas (personal). Preserva avisos de demo y validación data_origin/deactivation_effect; no anunciar revocación móvil por una desactivación de prueba. Integración real pendiente.
 - No registres tokens, secretos QR, códigos de recuperación o contraseñas. Respeta el carácter de una sola visualización de los códigos.
 
 Verificaciones desde esta carpeta:

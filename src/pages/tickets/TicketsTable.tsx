@@ -15,7 +15,7 @@ export function TicketsTable({ items, selectedId, onSelect }: TicketsTableProps)
       <table className="data">
         <tbody>
           <tr>
-            <td colSpan={7}>No hay tickets para este filtro.</td>
+            <td colSpan={9}>No hay tickets para este filtro.</td>
           </tr>
         </tbody>
       </table>
@@ -28,11 +28,13 @@ export function TicketsTable({ items, selectedId, onSelect }: TicketsTableProps)
         <tr>
           <th>Id</th>
           <th>Asunto</th>
+          <th>Solicitante</th>
           <th>Perfil</th>
           <th>Categoría</th>
           <th>Prioridad</th>
           <th>Estado</th>
           <th>Creado</th>
+          <th>Responsable</th>
         </tr>
       </thead>
       <tbody>
@@ -45,13 +47,15 @@ export function TicketsTable({ items, selectedId, onSelect }: TicketsTableProps)
               className={`ticket-row${selectedId === ticket.id ? ' selected' : ''}`}
               onClick={() => onSelect(ticket.id)}
             >
-              <td>#{ticket.number}</td>
+              <td><button type="button" className="action-button" onClick={event => { event.stopPropagation(); onSelect(ticket.id); }}>#{ticket.number}</button></td>
               <td>{ticket.subject}</td>
-              <td>{roleLabel(ticket.requester.role)}</td>
+              <td>{ticket.requester.name}<div className="mini-note">{ticket.requester.email}</div></td>
+              <td>{ticket.requester.role ? roleLabel(ticket.requester.role) : 'Sin perfil vinculado'}</td>
               <td>{TICKET_CATEGORY_NAMES[ticket.category] ?? ticket.category}</td>
               <td><span className={`chip ${priority.className}`}>{priority.label}</span></td>
               <td><span className={`chip ${status.className}`}>{status.icon} {status.label}</span></td>
               <td>{ticketDate(ticket.created_at)}</td>
+              <td>{ticket.assigned_to?.name ?? 'Sin asignar'}</td>
             </tr>
           );
         })}

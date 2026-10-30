@@ -13,7 +13,7 @@ export interface AuditEntry {
   after: Record<string, unknown> | null;
   metadata: { source?: string; outcome?: string; path?: string; method?: string;
     status_code?: number; duration_ms?: number; request_id?: string; view?: string;
-    control?: string; occurred_at?: string };
+    control?: string; occurred_at?: string; reason?: string; page?: number; page_size?: number };
   ip: string | null;
   user_agent: string | null;
   created_at: string;
@@ -23,6 +23,8 @@ export interface AuditFilters {
   q: string;
   actor_id: string;
   action: string;
+  entity_type: string;
+  entity_id: string;
   date_from: string;
   date_to: string;
 }
@@ -35,7 +37,7 @@ export interface AuditPage {
 }
 
 export const EMPTY_AUDIT_FILTERS: AuditFilters = {
-  q: '', actor_id: '', action: '', date_from: '', date_to: '',
+  q: '', actor_id: '', action: '', entity_type: '', entity_id: '', date_from: '', date_to: '',
 };
 
 function queryFor(filters: AuditFilters) {

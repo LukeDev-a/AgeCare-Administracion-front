@@ -14,7 +14,9 @@ test('presenta acciones y registros de negocio sin usar rutas HTTP', () => {
  assert.equal(api.auditRecord(entry), 'Memoria');
  assert.equal(api.auditRecord({ ...entry, entity_name: '', before: { title: 'Juego eliminado' } }), 'Juego eliminado');
  assert.ok(api.AUDIT_ACTION_OPTIONS.some(([key, label]) => key === 'games.activate' && label.startsWith('Activó')));
- assert.ok(api.AUDIT_ACTION_OPTIONS.every(([key]) => !key.startsWith('auth.') && !key.startsWith('ui.') && !key.startsWith('http.')));
+ assert.ok(api.AUDIT_ACTION_OPTIONS.some(([key]) => key === 'auth.login'));
+ assert.ok(api.AUDIT_ACTION_OPTIONS.some(([key]) => key === 'ticket.conversation_read'));
+ assert.ok(api.AUDIT_ACTION_OPTIONS.every(([key]) => !key.startsWith('ui.') && !key.startsWith('http.')));
 });
 test('la vista conserva el acceso al detalle y no presenta metadatos HTTP', () => {
  for (const path of ["src/pages/auditoria/AuditTable.tsx","src/pages/auditoria/AuditDetail.tsx"]) {

@@ -11,7 +11,7 @@ const { canAccessRoute, firstAllowedRoute, ROUTE_PERMISSIONS } = context.exports
 
 test('cada rol solo accede a los módulos de su perfil y siempre a seguridad propia', () => {
   const roles = {
-    admin: ['metrics', 'games', 'ops', 'support', 'content', 'marketplace', 'moderation', 'settings', 'legal', 'staff', 'audit'],
+    admin: ['metrics', 'games', 'ops', 'support', 'content', 'marketplace', 'moderation', 'settings', 'legal', 'staff', 'audit', 'end_users'],
     analyst: ['metrics', 'games', 'ops', 'support'],
     support: ['metrics', 'games', 'ops', 'support'],
     editor: ['games', 'content', 'marketplace'],

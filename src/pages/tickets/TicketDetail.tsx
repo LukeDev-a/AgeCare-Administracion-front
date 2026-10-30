@@ -7,14 +7,17 @@ import {
   updateTicket,
   type Agent,
   type TicketDetailData,
-  type TicketReply,
+  type TicketRepliesPage,
+  type TicketPriority,
+  type TicketPatch,
   type TicketStatus,
 } from '../../api/tickets';
 import { fmt, ticketDate } from '../../lib/format';
 import { roleLabel } from '../../lib/roleMeta';
-import { TICKET_CATEGORY_NAMES, TICKET_PRIORITY_META, TICKET_STATUS_META } from '../../lib/ticketMeta';
+import { TICKET_CATEGORY_NAMES, TICKET_PRIORITY_META, TICKET_STATUS_META, TICKET_TRANSITIONS } from '../../lib/ticketMeta';
 import { useAuth } from '../../auth/AuthContext';
 import { canManageTickets } from '../../routes/permissions';
+import { TicketContext } from './TicketContext';
 
 interface TicketDetailProps {
   ticketId: string;
@@ -25,7 +28,11 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
   const { user } = useAuth();
   const canManage = canManageTickets(user?.role);
   const [ticket, setTicket] = useState<TicketDetailData | null>(null);
-  const [replies, setReplies] = useState<TicketReply[]>([]);
+  const [replyResult, setReplyResult] = useState<{ key: string; data: TicketRepliesPage | null; error: string } | null>(null);
+  const [replyPage, setReplyPage] = useState(1);
+  const [reload, setReload] = useState(0);
+  const [priorityValue, setPriorityValue] = useState<TicketPriority>('medium');
+  const [categoryValue, setCategoryValue] = useState('other');
   const [agents, setAgents] = useState<Agent[]>([]);
   const [error, setError] = useState('');
   const [statusValue, setStatusValue] = useState<TicketStatus>('open');
@@ -34,38 +41,55 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
   const [replyBody, setReplyBody] = useState('');
   const [replyInternal, setReplyInternal] = useState(false);
   const [isSendingReply, setIsSendingReply] = useState(false);
-
-  async function loadDetail() {
-    setError('');
-    try {
-      const [ticketData, agentsData, repliesData] = await Promise.all([
-        fetchTicketDetail(ticketId),
-        canManage ? fetchAgents() : Promise.resolve([]),
-        fetchTicketReplies(ticketId),
-      ]);
-      setTicket(ticketData);
-      setAgents(agentsData);
-      setReplies(repliesData);
-      setStatusValue(ticketData.status);
-      setAssigneeValue(ticketData.assigned_to?.admin_id ?? '');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No fue posible cargar el detalle.');
-    }
-  }
+  const replyKey = `${ticketId}:${replyPage}:${reload}`;
+  const replies = replyResult?.key === replyKey ? replyResult.data : null;
+  const repliesError = replyResult?.key === replyKey ? replyResult.error : '';
 
   useEffect(() => {
-    setTicket(null);
-    void loadDetail();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticketId, canManage]);
+    let cancelled = false;
+    Promise.all([
+        fetchTicketDetail(ticketId),
+        canManage ? fetchAgents() : Promise.resolve([]),
+      ]).then(([ticketData, agentsData]) => {
+      if (cancelled) return;
+      setError('');
+      setTicket(ticketData);
+      setAgents(agentsData);
+      setStatusValue(ticketData.status);
+      setAssigneeValue(ticketData.assigned_to?.admin_id ?? '');
+      setPriorityValue(ticketData.priority);
+      setCategoryValue(ticketData.category);
+    }).catch((err: unknown) => {
+      if (cancelled) return;
+      setError(err instanceof Error ? err.message : 'No fue posible cargar el detalle.');
+    });
+    return () => { cancelled = true; };
+  }, [ticketId, canManage, reload]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTicketReplies(ticketId, replyPage).then(data => {
+      if (!cancelled) setReplyResult({ key: replyKey, data, error: '' });
+    }).catch((err: unknown) => {
+      if (!cancelled) setReplyResult({ key: replyKey, data: null, error: err instanceof Error ? err.message : 'No fue posible cargar la conversación.' });
+    });
+    return () => { cancelled = true; };
+  }, [ticketId, replyPage, reload, replyKey]);
 
   async function handleSaveStatus() {
     if (!canManage) return;
     setIsSaving(true);
     try {
-      await updateTicket(ticketId, statusValue, assigneeValue || null);
+      if (!ticket) return;
+      const patch: TicketPatch = {};
+      if (statusValue !== ticket.status) patch.status = statusValue;
+      if (priorityValue !== ticket.priority) patch.priority = priorityValue;
+      if (categoryValue !== ticket.category) patch.category = categoryValue;
+      if (assigneeValue !== (ticket.assigned_to?.admin_id ?? '')) patch.assigned_to = assigneeValue || null;
+      if (!Object.keys(patch).length) return;
+      await updateTicket(ticket.id, patch);
       onTicketUpdated();
-      await loadDetail();
+      setReload(value => value + 1);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'No fue posible actualizar el ticket.');
     } finally {
@@ -78,10 +102,12 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
     if (!canManage) return;
     setIsSendingReply(true);
     try {
-      await createReply(ticketId, replyBody, replyInternal);
+      if (!ticket || ticket.status === 'closed') return;
+      await createReply(ticket.id, replyBody, replyInternal);
       setReplyBody('');
       setReplyInternal(false);
-      await loadDetail();
+      onTicketUpdated();
+      setReload(value => value + 1);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'No fue posible enviar la respuesta.');
     } finally {
@@ -92,7 +118,7 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
   if (error) {
     return (
       <div className="card ticket-detail">
-        <div className="placeholder-box" style={{ padding: 35 }}>{error}</div>
+        <div className="placeholder-box" style={{ padding: 35 }}>{error} <button type="button" onClick={() => setReload(value => value + 1)}>Reintentar</button></div>
       </div>
     );
   }
@@ -121,7 +147,7 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
       <div className="ticket-detail-grid">
         <div>
           <div className="ticket-detail-label">Solicitante</div>
-          <div className="ticket-detail-value">{ticket.requester.name} · {roleLabel(ticket.requester.role)}</div>
+          <div className="ticket-detail-value">{ticket.requester.name} · {ticket.requester.role ? roleLabel(ticket.requester.role) : 'Sin perfil vinculado'}</div>
         </div>
         <div>
           <div className="ticket-detail-label">Categoría</div>
@@ -143,22 +169,32 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
       <div className="ticket-detail-label" style={{ marginTop: 14 }}>Responsable</div>
       <div className="ticket-detail-value">{ticket.assigned_to?.name ?? 'Sin asignar'}</div>
 
+      <p className="mini-note">Última modificación: {ticketDate(ticket.updated_at)} · Primera respuesta pública: {ticket.first_response_at ? ticketDate(ticket.first_response_at) : 'Sin respuesta pública'}</p>
+      <div className="ticket-detail-label">Contexto del solicitante</div>
+      {!ticket.requester_context || !Object.keys(ticket.requester_context).length ? <p className="mini-note">Sin contexto adicional disponible.</p> :
+        <TicketContext value={ticket.requester_context} />}
+      <div className="ticket-detail-label">Encuesta de satisfacción</div>
+      <p>{ticket.csat ? `${ticket.csat.score}/5${ticket.csat.comment ? ` · ${ticket.csat.comment}` : ''}` : 'Sin encuesta respondida.'}</p>
+
       {canManage && <div className="tickets-toolbar" style={{ marginTop: 18, marginBottom: 0 }}>
         <label className="ticket-detail-label" htmlFor="ticket-status-update">Cambiar estado</label>
         <select id="ticket-status-update" value={statusValue} onChange={event => setStatusValue(event.target.value as TicketStatus)}>
-          <option value="open">Abierto</option>
-          <option value="in_progress">En curso</option>
-          <option value="waiting_user">Esperando usuario</option>
-          <option value="resolved">Resuelto</option>
-          <option value="closed">Cerrado</option>
+          {[ticket.status, ...TICKET_TRANSITIONS[ticket.status]].map(value => <option key={value} value={value}>{TICKET_STATUS_META[value].label}</option>)}
         </select>
         <label className="ticket-detail-label" htmlFor="ticket-assignee">Asignar agente</label>
         <select id="ticket-assignee" value={assigneeValue} onChange={event => setAssigneeValue(event.target.value)}>
           <option value="">Sin asignar</option>
+          {ticket.assigned_to && !agents.some(agent => agent.id === ticket.assigned_to?.admin_id) && <option value={ticket.assigned_to.admin_id}>{ticket.assigned_to.name} (asignación anterior)</option>}
           {agents.map(agent => (
             <option key={agent.id} value={agent.id}>{agent.full_name}</option>
           ))}
         </select>
+        <label>Prioridad <select value={priorityValue} onChange={event => setPriorityValue(event.target.value as TicketPriority)}>
+          {Object.entries(TICKET_PRIORITY_META).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}
+        </select></label>
+        <label>Categoría <select value={categoryValue} onChange={event => setCategoryValue(event.target.value)}>
+          {Object.entries(TICKET_CATEGORY_NAMES).map(([key, name]) => <option key={key} value={key}>{name}</option>)}
+        </select></label>
         <button className="action-button" type="button" disabled={isSaving} onClick={() => void handleSaveStatus()}>
           {isSaving ? 'Guardando...' : 'Guardar cambios'}
         </button>
@@ -166,18 +202,26 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
 
       <div className="ticket-replies">
         <div className="ticket-detail-label">Historial de respuestas</div>
-        {replies.length === 0 && <div className="mini-note">Aún no hay respuestas.</div>}
-        {replies.map((reply, index) => (
-          <div key={index} className="ticket-reply">
+        {repliesError && <p role="alert">{repliesError} <button type="button" onClick={() => setReload(value => value + 1)}>Reintentar</button></p>}
+        {!replies && !repliesError && <p role="status">Cargando conversación...</p>}
+        {replies?.total === 0 && <div className="mini-note">Aún no hay respuestas.</div>}
+        {replies?.items.map(reply => (
+          <div key={reply.id} className="ticket-reply">
             <div className="ticket-reply-meta">
-              {reply.author_name} · {ticketDate(reply.created_at)}{reply.internal ? ' · Nota interna' : ''}
+              {reply.author_name} · {ticketDate(reply.created_at)} · {reply.internal ? 'Nota interna · solo personal autorizado' : 'Respuesta pública'}
             </div>
             <div className="ticket-reply-body">{reply.body}</div>
           </div>
         ))}
-        {canManage && <form className="ticket-form" style={{ marginTop: 14 }} onSubmit={event => void handleSendReply(event)}>
+        {replies && <div className="pagination">
+          <button type="button" disabled={replyPage <= 1} onClick={() => setReplyPage(value => value - 1)}>Mensajes anteriores</button>
+          <span>Página {replies.page} de {Math.max(1, Math.ceil(replies.total / replies.page_size))} · {replies.total} mensajes</span>
+          <button type="button" disabled={replyPage * replies.page_size >= replies.total} onClick={() => setReplyPage(value => value + 1)}>Mensajes siguientes</button>
+        </div>}
+        {ticket.status === 'closed' && <p>Este ticket está cerrado y no admite nuevos mensajes.</p>}
+        {canManage && ticket.status !== 'closed' && <form className="ticket-form" style={{ marginTop: 14 }} onSubmit={event => void handleSendReply(event)}>
           <label className="wide">
-            Nueva respuesta
+            {replyInternal ? 'Nueva nota interna' : 'Nueva respuesta pública'}
             <textarea
               name="body"
               maxLength={8000}
@@ -186,6 +230,7 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
               onChange={event => setReplyBody(event.target.value)}
             />
           </label>
+          <p className="mini-note wide">{replyInternal ? 'La nota será visible solo para el personal autorizado.' : 'La respuesta quedará registrada como pública en el historial del ticket.'}</p>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, gridColumn: '1 / -1' }}>
             <input
               name="internal"
@@ -197,7 +242,7 @@ export function TicketDetail({ ticketId, onTicketUpdated }: TicketDetailProps) {
           </label>
           <div className="ticket-form-actions">
             <button className="action-button" type="submit" disabled={isSendingReply}>
-              {isSendingReply ? 'Enviando...' : 'Enviar respuesta'}
+              {isSendingReply ? 'Guardando...' : replyInternal ? 'Guardar nota interna' : 'Guardar respuesta pública'}
             </button>
           </div>
         </form>}

@@ -2,7 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './layout/AppLayout';
 import { ProtectedRoute } from './layout/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
-import { PlaceholderPage } from './pages/PlaceholderPage';
+import { LegalPage } from './pages/legales/LegalPage';
 import { ComercialPage } from './pages/comercial/ComercialPage';
 import { OperativoPage } from './pages/operativo/OperativoPage';
 import { UsuariosPage } from './pages/usuarios/UsuariosPage';
@@ -19,6 +19,7 @@ import { MfaEnrollmentPage } from './pages/acceso/MfaEnrollmentPage';
 import { SecurityPage } from './pages/acceso/SecurityPage';
 import { ProfilePage } from './pages/perfil/ProfilePage';
 import { SettingsPage } from './pages/configuracion/SettingsPage';
+import { EndUsersPage } from './pages/usuarios-app/EndUsersPage';
 
 export function App() {
   return (
@@ -37,6 +38,7 @@ export function App() {
         <Route path="/comercial" element={<ComercialPage />} />
         <Route path="/operativo" element={<OperativoPage />} />
         <Route path="/usuarios" element={<UsuariosPage />} /> 
+        <Route path="/usuarios-app" element={<ProtectedRoute adminOnly><EndUsersPage /></ProtectedRoute>} />
         <Route path="/funcional" element={<FuncionalPage />} />
         <Route path="/juegos" element={<JuegosPage />} />
         <Route path="/tickets" element={<TicketsPage />} />
@@ -48,7 +50,7 @@ export function App() {
         <Route path="/seguridad" element={<SecurityPage />} />
         <Route path="/perfil" element={<ProfilePage />} />
         <Route path="/config" element={<ProtectedRoute adminOnly><SettingsPage /></ProtectedRoute>} />
-        <Route path="/legales" element={<PlaceholderPage icon="📜" title="Legales y privacidad" />} />
+        <Route path="/legales" element={<ProtectedRoute adminOnly><LegalPage /></ProtectedRoute>} />
       </Route>
     </Routes>
   );

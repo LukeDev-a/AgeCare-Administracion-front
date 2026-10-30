@@ -13,35 +13,42 @@ export function ProductsPanel() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
-  const [data, setData] = useState<ProductsListResponse | null>(null);
-  const [error, setError] = useState('');
+  const [categoryInput, setCategoryInput] = useState('');
+  const [category, setCategory] = useState('');
+  const [page, setPage] = useState(1);
+  const [result, setResult] = useState<{ key: string; data: ProductsListResponse | null; error: string } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const queryKey = JSON.stringify([page, search, status, category, reloadToken]);
+  const data = result?.key === queryKey ? result.data : null;
+  const error = result?.key === queryKey ? result.error : '';
+  const loading = result?.key !== queryKey;
 
   useEffect(() => {
     let cancelled = false;
-    setError('');
-    fetchProducts({ search, status })
+    fetchProducts({ search, status, category, page })
       .then(response => {
         if (cancelled) return;
-        setData(response);
+        setResult({ key: queryKey, data: response, error: '' });
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'No fue posible cargar los productos.');
+        setResult({ key: queryKey, data: null, error: err instanceof Error ? err.message : 'No fue posible cargar los productos.' });
       });
     return () => {
       cancelled = true;
     };
-  }, [search, status, reloadToken]);
+  }, [search, status, category, page, reloadToken, queryKey]);
 
   function refresh() {
     setReloadToken(token => token + 1);
   }
 
   function handleSearch() {
+    setPage(1);
     setSearch(searchInput.trim());
+    setCategory(categoryInput.trim());
   }
 
   const selectedProduct = data?.items.find(item => item.id === selectedId) ?? null;
@@ -64,6 +71,7 @@ export function ProductsPanel() {
             onCancel={() => setShowNewForm(false)}
             onCreated={() => {
               setShowNewForm(false);
+              setPage(1);
               refresh();
             }}
           />
@@ -74,19 +82,28 @@ export function ProductsPanel() {
             type="search"
             placeholder="Buscar producto o proveedor"
             aria-label="Buscar productos"
+            maxLength={120}
             value={searchInput}
             onChange={event => setSearchInput(event.target.value)}
             onKeyDown={event => {
               if (event.key === 'Enter') handleSearch();
             }}
           />
-          <select aria-label="Filtrar productos" value={status} onChange={event => setStatus(event.target.value)}>
+          <input aria-label="Filtrar por categoría" placeholder="Categoría" value={categoryInput} maxLength={60}
+            onChange={event => setCategoryInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') handleSearch(); }} />
+          <select aria-label="Filtrar productos" value={status} onChange={event => { setPage(1); setStatus(event.target.value); }}>
             <option value="">Todos los estados</option>
             <option value="draft">Borrador</option>
             <option value="published">Publicado</option>
             <option value="archived">Archivado</option>
           </select>
           <button className="action-button" type="button" onClick={handleSearch}>Buscar</button>
+          <button className="action-button" type="button" onClick={refresh}>Actualizar lista</button>
+        </div>
+        <div className="pagination">
+          <button type="button" disabled={loading || page <= 1} onClick={() => setPage(value => value - 1)}>Anterior</button>
+          <span>Página {page}{data ? ` de ${Math.max(1, Math.ceil(data.total / data.page_size))}` : ''}</span>
+          <button type="button" disabled={loading || !data || page * data.page_size >= data.total} onClick={() => setPage(value => value + 1)}>Siguiente</button>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
@@ -99,7 +116,7 @@ export function ProductsPanel() {
       </div>
 
       {selectedProduct ? (
-        <ProductDetail product={selectedProduct} onChanged={refresh} />
+        <ProductDetail key={`${selectedProduct.id}:${selectedProduct.updated_at}`} product={selectedProduct} onChanged={refresh} />
       ) : (
         <div className="card content-detail">
           <div className="placeholder-box" style={{ padding: 35 }}>Selecciona un producto para revisarlo.</div>

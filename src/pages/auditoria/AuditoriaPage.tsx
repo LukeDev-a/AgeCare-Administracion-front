@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { EMPTY_AUDIT_FILTERS, exportAudit, fetchAudit, fetchAuditUsers, type AuditEntry, type AuditFilters } from '../../api/audit';
-import { AUDIT_ACTION_OPTIONS } from '../../lib/auditMeta';
+import { AUDIT_ACTION_OPTIONS, AUDIT_ENTITIES } from '../../lib/auditMeta';
 import { AuditDetail } from './AuditDetail';
 import { AuditTable } from './AuditTable';
 
@@ -65,12 +65,14 @@ export function AuditoriaPage() {
   const field = (key: keyof AuditFilters, value: string) => setDraft(current => ({ ...current, [key]: value }));
   const pages = Math.max(1, Math.ceil(total / pageSize));
   return <section aria-label="Auditoría">
-    <div className="card"><div className="card-head"><div><h2 className="card-title">Historial de cambios</h2><div className="card-sub">{total.toLocaleString('es-CL')} eventos encontrados · Cambios confirmados en los datos</div></div>
+    <div className="card"><div className="card-head"><div><h2 className="card-title">Historial administrativo</h2><div className="card-sub">{total.toLocaleString('es-CL')} eventos encontrados · Cambios, accesos y consultas sensibles</div><p className="card-sub">Sin fechas se consultan los últimos 30 días. Cada consulta admite hasta 90 días. Las horas locales se envían en UTC.</p></div>
       <div className="audit-actions"><button type="button" className="action-button" disabled={loading} onClick={() => setReload(value => value + 1)}>Actualizar</button><button type="button" className="action-button" disabled={loading || exporting} onClick={() => void download()}>{exporting ? 'Exportando…' : 'Exportar CSV'}</button></div></div>
       <form className="audit-filters" onSubmit={apply}>
         <label>Buscar usuario, acción o módulo<input aria-label="Buscar en auditoría" maxLength={120} value={draft.q} onChange={event => field('q', event.target.value)} placeholder="Nombre, juegos, tickets…" /></label>
-        <label>Usuario<select aria-label="Usuario de auditoría" value={draft.actor_id} onChange={event => field('actor_id', event.target.value)}><option value="">Todos</option>{users.map(user => <option key={user.id} value={user.id}>{user.full_name}</option>)}</select></label>
+        <label>Identificador del usuario<input aria-label="Usuario de auditoría" list="audit-users" value={draft.actor_id} onChange={event => field('actor_id', event.target.value)} placeholder="Todos o identificador de cuenta" pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}" /><datalist id="audit-users">{users.map(user => <option key={user.id} value={user.id}>{user.full_name}</option>)}</datalist><small>También permite buscar cuentas eliminadas por el identificador del evento.</small></label>
         <label>Acción<select aria-label="Acción" value={draft.action} onChange={event => field('action', event.target.value)}><option value="">Todas</option>{AUDIT_ACTION_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label>Tipo de registro<select aria-label="Tipo de registro" value={draft.entity_type} onChange={event => field('entity_type', event.target.value)}><option value="">Todos</option>{AUDIT_ENTITIES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label>Identificador del registro<input aria-label="Identificador del registro" value={draft.entity_id} onChange={event => field('entity_id', event.target.value)} placeholder="Identificador que aparece en el detalle" pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}" /></label>
         <label>Desde (hora local)<input type="datetime-local" aria-label="Fecha inicial" value={draft.date_from} onChange={event => field('date_from', event.target.value)} /></label>
         <label>Hasta (hora local)<input type="datetime-local" aria-label="Fecha final" value={draft.date_to} onChange={event => field('date_to', event.target.value)} /></label>
         <div className="audit-actions"><button type="submit" className="action-button">Aplicar</button><button type="button" className="action-button" onClick={() => { setDraft({ ...EMPTY_AUDIT_FILTERS }); setFilters({ ...EMPTY_AUDIT_FILTERS }); setPage(1); }}>Limpiar</button></div>

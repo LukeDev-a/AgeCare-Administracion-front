@@ -40,10 +40,10 @@ export function ProductsTable({ items, selectedId, onSelect }: ProductsTableProp
               className={`marketplace-row${selectedId === product.id ? ' selected' : ''}`}
               onClick={() => onSelect(product.id)}
             >
-              <td>{product.name}</td>
+              <td><button className="action-button" type="button" onClick={event => { event.stopPropagation(); onSelect(product.id); }}>{product.name}</button></td>
               <td>{product.category}</td>
               <td>{product.vendor}</td>
-              <td>{product.price_clp == null ? '—' : money(product.price_clp)}</td>
+              <td>{product.price_clp == null ? 'Precio no informado' : money(product.price_clp)}</td>
               <td><span className={`chip ${status.className}`}>{status.label}</span></td>
               <td>{ticketDate(product.updated_at)}</td>
             </tr>

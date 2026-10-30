@@ -63,22 +63,24 @@ test('tickets: solo admin/support crean, cambian estado, asignan y responden; an
     const allowed = role === 'admin' || role === 'support';
     const calls = [];
     const api = { fetchTicketDetail: async () => ticket,
-      fetchTicketReplies: async () => [{ author_name: 'Agente', created_at: '2026-10-26', internal: true, body: 'Nota de consulta' }],
+      fetchTicketReplies: async () => ({ items: [{ id: 'r1', author_name: 'Agente', created_at: '2026-10-26', internal: true, body: 'Nota de consulta' }], page: 1, page_size: 25, total: 1 }),
       fetchAgents: async () => { calls.push('agents'); return [{ id: 'agent', full_name: 'Responsable visible' }]; } };
     const detail = mount('src/pages/tickets/TicketDetail.tsx', 'TicketDetail', { ...deps(role),
+      './TicketContext': { TicketContext: empty },
       '../../api/tickets': api, '../../lib/roleMeta': { roleLabel: String },
-      '../../lib/ticketMeta': { TICKET_STATUS_META: { open: { label: 'Abierto' } },
+      '../../lib/ticketMeta': { TICKET_TRANSITIONS: { open: [] }, TICKET_STATUS_META: { open: { label: 'Abierto' } },
         TICKET_PRIORITY_META: { medium: { label: 'Media' } }, TICKET_CATEGORY_NAMES: {} },
     }, { ticketId: ticket.id, onTicketUpdated() {} });
     await detail.settle();
     const html = detail.html();
-    for (const action of ['Cambiar estado', 'Asignar agente', 'Guardar cambios', 'Enviar respuesta', '<textarea']) {
+    for (const action of ['Cambiar estado', 'Asignar agente', 'Guardar cambios', 'Guardar respuesta pública', '<textarea']) {
       assert.equal(html.includes(action), allowed, `${role}: ${action}`);
     }
     assert.ok(html.includes('Descripción visible') && html.includes('Responsable visible'));
     assert.ok(html.includes('Nota de consulta') && html.includes('Nota interna'));
     assert.equal(calls.length, allowed ? 1 : 0, `${role}: no consulta agentes en lectura`);
     const { TicketsPage } = load('src/pages/tickets/TicketsPage.tsx', { ...deps(role),
+      '../../lib/ticketMeta': { TICKET_PRIORITY_META: {}, TICKET_CATEGORY_NAMES: {} },
       '../../api/tickets': {}, './NewTicketForm': { NewTicketForm: empty },
       './TicketDetail': { TicketDetail: empty }, './TicketsTable': { TicketsTable: empty } });
     assert.equal(renderToStaticMarkup(React.createElement(TicketsPage)).includes('Crear ticket'), allowed);
@@ -99,12 +101,12 @@ test('marketplace: solo admin/editor gestionan; moderator conserva consulta de p
     const { ProductDetail } = load('src/pages/marketplace/ProductDetail.tsx', { ...deps(role),
       '../../api/marketplace': {}, '../../lib/marketMeta': { MARKET_STATUS_META: { draft: { label: 'Borrador' } } } });
     const html = renderToStaticMarkup(React.createElement(ProductDetail, { product, onChanged() {} }));
-    for (const action of ['Guardar cambios', 'Archivar', '<input', '<form']) {
+    for (const action of ['Guardar cambios', 'Publicar', '<input', '<form']) {
       assert.equal(html.includes(action), allowed, `${role}: producto ${action}`);
     }
     assert.ok(html.includes('Producto visible') && html.includes('Proveedor visible'));
     assert.ok(html.includes('https://example.org/producto'));
-    if (!allowed) assert.ok(!html.includes('Sin datos'), 'precio cero se conserva');
+    if (!allowed) assert.ok(html.includes('0 CLP'), 'precio cero se conserva');
     const { CaregiverDetail } = load('src/pages/marketplace/CaregiverDetail.tsx', { ...deps(role),
       '../../api/caregivers': {}, '../../lib/caregiverMeta': { CAREGIVER_STATUS_META: { pending: { label: 'Pendiente' } } } });
     const person = renderToStaticMarkup(React.createElement(CaregiverDetail, { caregiver, onChanged() {} }));

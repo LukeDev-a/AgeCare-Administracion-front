@@ -18,21 +18,26 @@ export interface ProductsListResponse {
   items: Product[];
   total: number;
   page: number;
+  page_size: number;
 }
 
 export interface ProductListParams {
   search?: string;
   status?: string;
+  category?: string;
+  page?: number;
 }
 
 export interface ProductPayload {
   name: string;
   category: string;
   vendor: string;
-  price_clp?: number;
+  price_clp?: number | null;
   external_url: string;
-  image_url?: string;
+  image_url?: string | null;
 }
+
+export type ProductPatch = Partial<ProductPayload> & { status?: ProductStatus };
 
 async function parseErrorMessage(response: Response, fallback: string): Promise<string> {
   try {
@@ -44,9 +49,10 @@ async function parseErrorMessage(response: Response, fallback: string): Promise<
 }
 
 export async function fetchProducts(params: ProductListParams): Promise<ProductsListResponse> {
-  const query = new URLSearchParams({ page: '1', page_size: '25' });
+  const query = new URLSearchParams({ page: String(params.page ?? 1), page_size: '25' });
   if (params.search) query.set('q', params.search);
   if (params.status) query.set('status', params.status);
+  if (params.category) query.set('category', params.category);
   const response = await apiFetch(`/marketplace/products?${query}`);
   if (!response.ok) throw new Error('No fue posible cargar los productos.');
   return response.json();
@@ -57,7 +63,7 @@ export async function createProduct(payload: ProductPayload): Promise<void> {
   if (!response.ok) throw new Error(await parseErrorMessage(response, 'No fue posible crear el producto.'));
 }
 
-export async function updateProduct(productId: string, payload: ProductPayload): Promise<void> {
+export async function updateProduct(productId: string, payload: ProductPatch): Promise<void> {
   const response = await apiFetch(`/marketplace/products/${productId}`, { method: 'PATCH', body: JSON.stringify(payload) });
   if (!response.ok) throw new Error(await parseErrorMessage(response, 'No fue posible guardar el producto.'));
 }

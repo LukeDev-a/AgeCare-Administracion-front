@@ -27,7 +27,7 @@ const dependencies = {
 const { Sidebar } = load('src/layout/Sidebar.tsx', dependencies);
 const { ProtectedRoute } = load('src/layout/ProtectedRoute.tsx', dependencies);
 const roles = {
-  admin: ['metrics', 'games', 'ops', 'support', 'content', 'marketplace', 'moderation', 'settings', 'legal', 'staff', 'audit'],
+  admin: ['metrics', 'games', 'ops', 'support', 'content', 'marketplace', 'moderation', 'settings', 'legal', 'staff', 'audit', 'end_users'],
   analyst: ['metrics', 'games', 'ops', 'support'],
   support: ['metrics', 'games', 'ops', 'support'],
   editor: ['games', 'content', 'marketplace'],

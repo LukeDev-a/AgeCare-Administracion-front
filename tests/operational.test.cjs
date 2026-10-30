@@ -84,6 +84,7 @@ test('cambiar ventana consulta nuevos datos, ignora respuesta antigua y aísla f
       useCallback: callback => callback, useEffect: effect => effects.push(effect),
     }, '../../api/operational': api, '../../lib/format': format, '../../lib/statusMeta': status,
     '../../lib/operationalMeta': meta, './LatencyChart': { LatencyChart: blank }, './OpsComponentCard': { OpsComponentCard: blank },
+    './IncidentsPanel': { IncidentsPanel: () => React.createElement('p', { role: 'alert' }, 'Incidentes no disponibles') },
   });
   function render() { cursor = 0; effects = []; return OperativoPage(); }
   function start() { cancel.forEach(cleanup => cleanup()); cancel = effects.map(effect => effect()); }

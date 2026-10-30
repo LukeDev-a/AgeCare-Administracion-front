@@ -12,15 +12,26 @@ export interface RoleSummaryItem {
 }
 
 export interface RolesSummary {
+  days: number;
+  computed_at: string;
   roles: RoleSummaryItem[];
 }
 
+export interface WeeklyPeriod {
+  start_date: string;
+  end_date: string;
+  is_current_week: boolean;
+}
+
 export interface RolesWeekly {
+  computed_at: string;
+  week_details?: WeeklyPeriod[];
   weeks: string[];
   series: { role: RoleKey; values: number[] }[];
 }
 
 export interface SupportSummary {
+  computed_at: string;
   open: number;
   in_progress: number;
   waiting_user: number;
@@ -39,6 +50,7 @@ export interface TicketCategory {
   category: string;
   name: string;
   count: number;
+  share: number;
 }
 
 export interface TicketsByCategory {
@@ -53,7 +65,7 @@ export type TicketPriority = 'low' | 'medium' | 'high' | 'critical';
 export interface TicketSummaryItem {
   number: number;
   subject: string;
-  requester: { role: RoleKey | string };
+  requester: { role: RoleKey | string | null };
   priority: TicketPriority;
   status: TicketStatus;
 }
@@ -64,12 +76,15 @@ export interface TicketsList {
 
 async function getJson<T>(path: string): Promise<T> {
   const response = await apiFetch(path);
-  if (!response.ok) throw new Error('No fue posible cargar usuarios y soporte.');
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error?.message ?? 'No fue posible cargar usuarios y soporte.');
+  }
   return response.json() as Promise<T>;
 }
 
-export const fetchRolesSummary = () => getJson<RolesSummary>('/metrics/roles/summary?days=30');
-export const fetchRolesWeekly = () => getJson<RolesWeekly>('/metrics/roles/weekly-active?weeks=8');
+export const fetchRolesSummary = (days = 30) => getJson<RolesSummary>(`/metrics/roles/summary?days=${encodeURIComponent(days)}`);
+export const fetchRolesWeekly = (weeks = 8) => getJson<RolesWeekly>(`/metrics/roles/weekly-active?weeks=${encodeURIComponent(weeks)}`);
 export const fetchSupportSummary = () => getJson<SupportSummary>('/support/summary');
-export const fetchTicketsByCategory = () => getJson<TicketsByCategory>('/support/tickets/by-category?days=30');
+export const fetchTicketsByCategory = (days = 30) => getJson<TicketsByCategory>(`/support/tickets/by-category?days=${encodeURIComponent(days)}`);
 export const fetchRecentTickets = () => getJson<TicketsList>('/support/tickets?page=1&page_size=6&order=-created_at');

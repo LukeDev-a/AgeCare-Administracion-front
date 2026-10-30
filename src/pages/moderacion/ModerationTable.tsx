@@ -39,7 +39,8 @@ export function ModerationTable({ items, selectedId, onSelect }: ModerationTable
               className={`moderation-row${selectedId === item.id ? ' selected' : ''}`}
               onClick={() => onSelect(item.id)}
             >
-              <td>{MODERATION_TYPES[item.type] ?? item.type}</td>
+              <td><button className="action-button" type="button" onClick={event => { event.stopPropagation(); onSelect(item.id); }}>{MODERATION_TYPES[item.type] ?? item.type}</button>
+                {item.is_safety && <span className="chip warn">Seguridad</span>}</td>
               <td>{item.author?.name ?? 'Sin nombre'}</td>
               <td>{item.report_reason ?? 'Sin motivo indicado'}</td>
               <td><span className={`chip ${status.className}`}>{status.label}</span></td>

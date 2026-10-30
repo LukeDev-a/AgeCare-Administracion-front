@@ -56,15 +56,15 @@ export function NewProductForm({ onCreated, onCancel }: NewProductFormProps) {
         <input name="vendor" minLength={2} maxLength={120} required />
       </label>
       <label>
-        Precio CLP
-        <input name="price_clp" type="number" min={0} />
+        Precio referencial CLP (opcional)
+        <input name="price_clp" type="number" min={0} step={1} />
       </label>
       <label className="wide">
         Enlace externo HTTPS
         <input name="external_url" type="url" required />
       </label>
       <label className="wide">
-        Imagen HTTPS (opcional)
+        Dirección de imagen (opcional)
         <input name="image_url" type="url" />
       </label>
       <div className="ticket-form-actions">

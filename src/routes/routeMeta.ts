@@ -4,6 +4,7 @@ export interface RouteMeta {
 }
 
 export const VIEW_META: Record<string, RouteMeta> = {
+  'usuarios-app': { title: 'Usuarios y pacientes', crumb: 'Operación · Directorio de demostración' },
   perfil: { title: 'Mi perfil', crumb: 'Mi cuenta · Datos y permisos' },
   seguridad: { title: 'Seguridad de mi cuenta', crumb: 'Mi cuenta · Autenticador y códigos de recuperación' },
   cuentas: { title: 'Cuentas de la consola', crumb: 'Sistema · Administración de accesos y roles' },

@@ -39,6 +39,14 @@ export function GamesTable({ items, canManage, onToggle, onEdit, onDelete }: Gam
             <td>
               <div style={{ fontWeight: 700 }}>{item.title}</div>
               <div style={{ fontSize: 11, color: 'var(--ink-faint)' }}>{item.slug}</div>
+              <details><summary>Ver información</summary>
+                <p>{item.description || 'Sin descripción.'}</p>
+                <p>Dirección del juego: {item.target_url || 'Sin recurso configurado'}</p>
+                {item.resource_kind === 'external' && <p>Juego externo: desactivarlo lo retira del catálogo; su web sigue disponible.</p>}
+                <p>Creador: {item.created_by_name || 'Sin registro histórico'}</p>
+                <p>Creado: {item.created_at ? new Date(item.created_at).toLocaleString('es-CL') : 'Sin datos'}</p>
+                <p>Último cambio: {item.updated_at ? new Date(item.updated_at).toLocaleString('es-CL') : 'Sin datos'}</p>
+              </details>
             </td>
             <td>{GAME_TYPE_LABELS[item.item_type] ?? item.item_type}</td>
             <td>{item.category}</td>

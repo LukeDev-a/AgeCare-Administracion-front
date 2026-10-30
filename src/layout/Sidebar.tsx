@@ -23,6 +23,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: 'Operación',
     items: [
+      { to: '/usuarios-app', icon: '👤', label: 'Usuarios y pacientes', adminOnly: true },
       { to: '/tickets', icon: '🎫', label: 'Tickets de soporte'},
       { to: '/contenido', icon: '📰', label: 'Curación de contenido'},
       { to: '/catalogos', icon: '🛍️', label: 'Catálogos marketplace'},

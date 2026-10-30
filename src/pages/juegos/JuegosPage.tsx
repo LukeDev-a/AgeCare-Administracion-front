@@ -10,34 +10,34 @@ export function JuegosPage() {
   const { user } = useAuth();
   const canManage = canManageGames(user?.role);
   const [typeFilter, setTypeFilter] = useState('all');
-  const [items, setItems] = useState<GameAppItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [stateFilter, setStateFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const [result, setResult] = useState<{ key: string; items: GameAppItem[]; error: string } | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [editingItem, setEditingItem] = useState<GameAppItem | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const queryKey = `${typeFilter}:${stateFilter}:${reloadToken}`;
+  const isLoading = result?.key !== queryKey;
+  const error = result?.key === queryKey ? result.error : '';
+  const items = result?.key === queryKey ? result.items.filter(item => item.title.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())) : [];
 
   useEffect(() => {
     let cancelled = false;
-    setIsLoading(true);
-    setError('');
-    fetchGamesApps(typeFilter)
+    fetchGamesApps(typeFilter, stateFilter)
       .then(data => {
         if (cancelled) return;
-        setItems(data);
+        setResult({ key: queryKey, items: data, error: '' });
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'No fue posible cargar el catálogo.');
+        setResult({ key: queryKey, items: [], error: err instanceof Error ? err.message : 'No fue posible cargar el catálogo.' });
       })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
+      ;
     return () => {
       cancelled = true;
     };
-  }, [typeFilter, reloadToken]);
+  }, [typeFilter, stateFilter, reloadToken, queryKey]);
 
   function refresh() {
     setReloadToken(token => token + 1);
@@ -55,7 +55,7 @@ export function JuegosPage() {
 
   async function handleDelete(item: GameAppItem) {
     if (!canManage) return;
-    if (!confirm(`¿Eliminar "${item.title}"?`)) return;
+    if (!confirm(`¿Eliminar "${item.title}"? Se retirará del catálogo y dejará de estar disponible para jugar. Su historial de auditoría se conservará. Los otros juegos no se modificarán.`)) return;
     try {
       await deleteGameApp(item.id);
       refresh();
@@ -67,6 +67,10 @@ export function JuegosPage() {
   return (
     <>
       <div className="filter-row">
+        <input aria-label="Buscar juego por nombre" placeholder="Buscar por nombre" value={search} onChange={event => setSearch(event.target.value)} />
+        <select aria-label="Filtrar juegos por estado" value={stateFilter} onChange={event => setStateFilter(event.target.value)}>
+          <option value="">Todos los estados</option><option value="true">Activos</option><option value="false">Inactivos</option>
+        </select>
         <button className="action-button" type="button" onClick={() => setShowPreview(value => !value)}>
           {showPreview ? (canManage ? 'Modificar juegos' : 'Ver catálogo') : (canManage ? 'Vista previa y rotación →' : 'Vista previa →')}
         </button>
@@ -118,6 +122,7 @@ export function JuegosPage() {
 
       {canManage && showModal && (
         <GameFormModal
+          key={editingItem?.id ?? 'new'}
           editingItem={editingItem}
           onClose={() => setShowModal(false)}
           onSaved={() => {
