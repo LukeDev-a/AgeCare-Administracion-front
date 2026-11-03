@@ -17,6 +17,7 @@ export function ContentPage() {
   const [showNewForm, setShowNewForm] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const [page, setPage] = useState(1);
+  const [section, setSection] = useState<'manage' | 'prepare'>('manage');
 
   useEffect(() => {
     let cancelled = false;
@@ -49,10 +50,18 @@ export function ContentPage() {
 
   return (
     <>
+      <div className="card"><h2 className="card-title">Curación de contenido</h2>
+        <p className="card-sub">Gestiona lo que ya está en el catálogo o prepara nuevas noticias antes de incorporarlas.</p>
+        <div className="marketplace-tabs" role="group" aria-label="Secciones de curación de contenido">
+          <button className={section === 'manage' ? 'active' : ''} aria-pressed={section === 'manage'} onClick={() => setSection('manage')}>Gestionar contenido</button>
+          <button className={section === 'prepare' ? 'active' : ''} aria-pressed={section === 'prepare'} onClick={() => setSection('prepare')}>Preparar noticias</button>
+        </div>
+      </div>
+      <section hidden={section !== 'manage'} aria-label="Gestionar contenido">
       <div className="card">
         <div className="card-head">
           <div>
-            <div className="card-title">Curación de contenido</div>
+            <div className="card-title">Catálogo de chistes y noticias</div>
             <div className="card-sub">{data ? `${fmt(data.total)} contenidos · página ${data.page}` : 'Cargando contenido...'}</div>
           </div>
           <button className="action-button" type="button" onClick={() => setShowNewForm(value => !value)}>
@@ -123,7 +132,13 @@ export function ContentPage() {
           <div className="placeholder-box" style={{ padding: 35 }}>Selecciona un contenido para editarlo.</div>
         </div>
       )}
-      <NewsCandidates onDraft={() => { setPage(1); refresh(); }} />
+      </section>
+      <section hidden={section !== 'prepare'} aria-label="Preparar noticias">
+        <NewsCandidates onDraft={(id, title) => {
+          setSearchInput(title); setSearch(title); setType(''); setStatus(''); setPage(1);
+          setSelectedId(id); setShowNewForm(false); refresh(); setSection('manage');
+        }} />
+      </section>
     </>
   );
 }

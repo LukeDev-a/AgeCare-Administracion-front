@@ -107,4 +107,4 @@ export const fetchEditorialRuntime = () => editorialRequest<{ worker_enabled: bo
 export const requestCollection = () => editorialRequest('collect', {});
 export const requestAdaptation = (id: string) => editorialRequest(`candidates/${id}/adapt`, {});
 export const reviewCandidate = (id: string, action: string, note: string, source_hash: string) => editorialRequest(`candidates/${id}/review`, { action, note, source_hash });
-export const createCandidateDraft = (id: string, title: string, body: string) => editorialRequest(`candidates/${id}/draft`, { title, body });
+export const createCandidateDraft = (id: string, title: string, body: string) => editorialRequest<ContentItem>(`candidates/${id}/draft`, { title, body });

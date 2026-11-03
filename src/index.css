@@ -339,3 +339,16 @@
 .settings-field .settings-json { font-family:monospace; }
 .settings-conflict { border:1px solid var(--line); border-radius:8px; padding:14px; margin-top:16px; }
 @media(max-width:850px) { .settings-layout { grid-template-columns:1fr; } }
+
+/* Revisión editorial: pasos y decisiones guardadas. */
+.candidate-step { margin:24px 0; padding:20px; border:1px solid var(--line); border-radius:12px; background:var(--surface); line-height:1.65; }
+.candidate-step h4 { margin:0 0 14px; font-size:17px; }
+.candidate-step p { margin:12px 0; }
+.candidate-step summary { cursor:pointer; padding:10px 0; font-weight:600; }
+.candidate-saved { padding:12px 16px; border-left:4px solid var(--brand); background:var(--surface-muted); border-radius:6px; }
+.candidate-choice[aria-pressed="true"] { border:2px solid var(--brand); background:var(--brand-soft); color:var(--ink); font-weight:700; }
+.candidate-choice[aria-pressed="true"]:disabled { opacity:1; }
+.candidate-original { max-height:360px; overflow:auto; white-space:pre-wrap; padding:12px; background:var(--surface-muted); }
+.candidate-proposal { margin-top:18px; padding:12px 18px; border:1px solid var(--brand); border-radius:10px; }
+.candidate-proposal h5 { font-size:17px; margin:12px 0; }
+@media (max-width:600px) { .candidate-step { padding:14px; } .candidate-step .audit-actions { align-items:stretch; flex-direction:column; } }
