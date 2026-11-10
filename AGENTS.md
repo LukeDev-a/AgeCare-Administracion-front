@@ -8,6 +8,7 @@ React + TypeScript + Vite. Lee [docs/CONTEXTO-TECNICO.md](docs/CONTEXTO-TECNICO.
 - No pongas claves del servidor ni secretos SMTP en variables `VITE_*`: esas variables son públicas en el bundle.
 - La autorización efectiva está en el backend. Menú y rutas usan los permisos del perfil en `src/routes/permissions.ts`; esto no acredita que todos los botones de modificación se oculten para roles de lectura.
 - Usa los estilos existentes y variables de tema en `src/index.css`. Preserva el comportamiento de tema claro/oscuro.
+- Uso comercial adopta Tailwind mediante `@tailwindcss/vite` y `src/tailwind.css`. Las utilidades llevan prefijo `tw:` y usan colores ligados a variables de tema. Se importan theme y utilities, con prioridad importante para convivir con CSS existente. Conservar esta integración gradual al extender el diseño.
 - No reconstruyas el rastreo de clics como auditoría. La vista consume cambios de negocio registrados por el backend.
 - Desde fase 17 también muestra logins correctos/fallidos y consultas de conversaciones, autorizados expresamente; conserva esa distinción sin capturar navegación general. Contrato en Requerimientos/fase-17 y docs/auditoria-administrativa.md del backend.
 - /usuarios-app (fase18) es directorio de demostración solo admin, distinto de /usuarios (analítica) y /cuentas (personal). Preserva avisos de demo y validación data_origin/deactivation_effect; no anunciar revocación móvil por una desactivación de prueba. Integración real pendiente.

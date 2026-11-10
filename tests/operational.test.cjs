@@ -15,6 +15,7 @@ function load(path, dependencies = {}) {
 const meta = load('src/lib/operationalMeta.ts');
 const status = load('src/lib/statusMeta.ts');
 const format = load('src/lib/format.ts');
+const loading = load('src/pages/operativo/LoadingIndicator.tsx');
 
 test('consulta ventanas y varios componentes con cliente protegido y conserva error de API', async () => {
   const calls = [];
@@ -84,15 +85,24 @@ test('cambiar ventana consulta nuevos datos, ignora respuesta antigua y aísla f
       useCallback: callback => callback, useEffect: effect => effects.push(effect),
     }, '../../api/operational': api, '../../lib/format': format, '../../lib/statusMeta': status,
     '../../lib/operationalMeta': meta, './LatencyChart': { LatencyChart: blank }, './OpsComponentCard': { OpsComponentCard: blank },
+    './LoadingIndicator': loading,
     './IncidentsPanel': { IncidentsPanel: () => React.createElement('p', { role: 'alert' }, 'Incidentes no disponibles') },
   });
   function render() { cursor = 0; effects = []; return OperativoPage(); }
   function start() { cancel.forEach(cleanup => cleanup()); cancel = effects.map(effect => effect()); }
   let tree = render(); start();
+  assert.match(renderToStaticMarkup(tree), /Consultando el estado de los servicios/);
+  assert.equal(find(tree, node => node.type === 'section' && node.props?.['aria-label'] === 'Resumen operativo').props['aria-busy'], true);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(calls[0].window, '1h');
   assert.equal(calls[0].components.length, 7);
   tree = render();
+  assert.equal(find(tree, node => node.type === 'section' && node.props?.['aria-label'] === 'Resumen operativo').props['aria-busy'], false);
+  assert.equal(find(tree, node => node.props?.['aria-label'] === 'Resumen operativo').props.hidden, false);
+  find(tree, node => node.type === 'button' && node.props.children === 'Tiempos de respuesta').props.onClick();
+  tree = render();
+  assert.equal(find(tree, node => node.props?.['aria-label'] === 'Resumen operativo').props.hidden, true);
+  assert.equal(find(tree, node => node.type === 'section' && node.props?.['aria-label'] === 'Tiempos de respuesta').props.hidden, false);
   find(tree, node => node.type === 'select').props.onChange({ target: { value: '7d' } });
   render(); start();
   await new Promise(resolve => setImmediate(resolve));
@@ -108,4 +118,10 @@ test('cambiar ventana consulta nuevos datos, ignora respuesta antigua y aísla f
   assert.match(html, /Comprobación sintética: ejecución de prueba/);
   assert.match(html, /Sin datos: Notificaciones push/);
   assert.match(html, /31 ms/);
+  tree = render();
+  find(tree, node => node.type === 'button' && node.props.children === 'Incidentes').props.onClick();
+  tree = render();
+  assert.equal(find(tree, node => node.props?.['aria-label'] === 'Incidentes operativos').props.hidden, false);
+  find(tree, node => node.type === 'button' && node.props.children === 'Tiempos de respuesta').props.onClick();
+  assert.equal(find(render(), node => node.type === 'select').props.value, '7d');
 });

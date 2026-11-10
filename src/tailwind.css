@@ -1,0 +1,19 @@
+/* Prefijo propio para la adopción gradual sobre los estilos existentes. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(tw);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(tw) important;
+
+@theme inline {
+  --color-panel: var(--surface);
+  --color-canvas: var(--surface-muted);
+  --color-ink: var(--ink);
+  --color-muted: var(--ink-soft);
+  --color-stroke: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-warning: var(--warn);
+  --color-warning-bg: var(--warn-bg);
+  --color-positive: var(--ok-ink);
+  --color-negative: var(--crit);
+}

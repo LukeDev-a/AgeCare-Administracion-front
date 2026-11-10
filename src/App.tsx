@@ -20,11 +20,13 @@ import { SecurityPage } from './pages/acceso/SecurityPage';
 import { ProfilePage } from './pages/perfil/ProfilePage';
 import { SettingsPage } from './pages/configuracion/SettingsPage';
 import { EndUsersPage } from './pages/usuarios-app/EndUsersPage';
+import { PasswordResetPage } from './pages/acceso/PasswordResetPage';
 
 export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/recuperar-contrasena" element={<PasswordResetPage />} />
       <Route path="/aceptar-invitacion" element={<InvitationPage />} />
       <Route path="/configurar-mfa" element={<MfaEnrollmentPage />} />
       <Route

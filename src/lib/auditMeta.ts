@@ -20,6 +20,8 @@ AUDIT_ACTION_OPTIONS.push(
   ['end_users.demo_deactivate', 'Desactivó una cuenta de prueba'],
   ['auth.login', 'Inició sesión'],
   ['auth.login_failed', 'Intento de acceso rechazado'],
+  ['auth.password_reset_request', 'Solicitó recuperación de contraseña'],
+  ['auth.password_reset', 'Restableció su contraseña'],
   ['ticket.conversation_read', 'Consultó una conversación de soporte'],
   ['content.approve', 'Aprobó el texto editorial'],
   ['content.audio_retry', 'Solicitó regenerar audio'],

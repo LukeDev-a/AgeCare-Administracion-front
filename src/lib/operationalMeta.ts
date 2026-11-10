@@ -5,7 +5,7 @@ export const OPS_COMPONENTS = [
   ['storage', 'Almacenamiento'], ['music_sync', 'Sincronización musical'],
 ] as const;
 export const opsDate = (value: string | null | undefined) => value
-  ? new Date(value).toLocaleString('es-CL', { timeZone: 'America/Santiago' }) : 'Sin datos';
+  ? new Date(value).toLocaleString('es-CL', { timeZone: 'America/Santiago', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : 'Sin datos';
 export const opsOrigin = (value: string) => ({ demo: 'Datos de demostración', real: 'Mediciones reales' }[value] ?? 'Origen sin verificar');
 export const opsMeasurement = (value: string) => ({ delivery: 'Entrega de notificaciones de extremo a extremo',
   generation: 'Generación de respuestas de IA', service: 'Tiempo de respuesta del servicio' }[value] ?? 'Tipo de medición sin verificar');

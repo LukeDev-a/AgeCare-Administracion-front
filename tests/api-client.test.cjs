@@ -8,7 +8,7 @@ function setup() {
   const storage = new Map(), notifications = [];
   const transport = { send: async () => new Response('{}') };
   const globals = {
-    Headers, atob, Event, Date,
+    Headers, atob, Event, Date, setTimeout, clearTimeout,
     sessionStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
     window: { dispatchEvent: event => notifications.push(event.type) },
     fetch: (...args) => transport.send(...args),
@@ -16,7 +16,9 @@ function setup() {
   const transpile = source => ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   const library = { ...globals, exports: {} };
   vm.runInNewContext(transpile(fs.readFileSync('src/lib/sessionClient.ts', 'utf8')), library);
-  const client = { ...globals, exports: {}, require: () => library.exports };
+  const activity = { ...globals, exports: {} };
+  vm.runInNewContext(transpile(fs.readFileSync('src/lib/requestActivity.ts', 'utf8')), activity);
+  const client = { ...globals, exports: {}, require: name => name === '../lib/requestActivity' ? activity.exports : library.exports };
   vm.runInNewContext(transpile(fs.readFileSync('src/api/client.ts', 'utf8').replace('import.meta.env.VITE_API_BASE_URL', "'http://api'")), client);
   return { api: client.exports, transport, notifications };
 }

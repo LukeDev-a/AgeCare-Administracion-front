@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { API_BASE_URL, apiFetch, clearSession, ensureFreshSession, getAccessToken, getRefreshToken, logoutSession, setSession } from '../api/client';
+import { API_BASE_URL, apiFetch, publicFetch, clearSession, ensureFreshSession, getAccessToken, getRefreshToken, logoutSession, setSession } from '../api/client';
+import { LoginError } from '../lib/loginLockout';
 
 export interface AdminUser {
   id: string;
@@ -77,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated]);
 
   async function login(payload: LoginPayload) {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await publicFetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     });
     const data = await response.json();
@@ -85,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sessionStorage.setItem('agecare-mfa-enrollment', data.error.enrollment_token);
       throw new Error('MFA_ENROLLMENT_REQUIRED');
     }
-    if (!response.ok) throw new Error(data?.error?.message ?? 'No fue posible iniciar sesión.');
+    if (!response.ok) throw new LoginError(data?.error?.message ?? 'No fue posible iniciar sesión.', data?.error?.details);
     setSession(data);
     // El login no incluye los permisos; obtener el perfil antes de habilitar las rutas.
     const profile = await apiFetch('/auth/me');

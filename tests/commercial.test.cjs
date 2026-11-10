@@ -42,17 +42,25 @@ test('gráfico de altas conserva null y cero, y rechaza series desalineadas', ()
   assert.match(invalid, /series desalineadas/);
 });
 
-test('metadatos distinguen demo, cálculo viejo y fuente vieja; fechas no cambian de día', () => {
+test('actualización legible conserva avisos de antigüedad sin mostrar origen ni detalle técnico', () => {
   const { AnalyticsMetadata, analyticsDate } = load('src/pages/comercial/AnalyticsMetadata.tsx');
   assert.equal(analyticsDate('2026-10-01'), '01/10/2026');
   const html = renderToStaticMarkup(React.createElement(AnalyticsMetadata, { value: {
     data_origin: 'demo', computed_at: null,
     freshness: { calculation_stale: true, sources: [{ name: 'payments', missing: false, stale: true, available_through: null }] },
   } }));
-  assert.match(html, /Datos de demostración/);
-  assert.match(html, /El cálculo tiene más de 24 horas/);
-  assert.match(html, /Fuente pagos/);
-  assert.match(html, /Desactualizada/);
+  assert.match(html, /Última actualización de los indicadores/);
+  assert.match(html, /Fecha aún no disponible/);
+  assert.match(html, /La última actualización tiene más de 24 horas/);
+  assert.match(html, /Parte de la información lleva más de 24 horas/);
+  assert.doesNotMatch(html, /Datos de demostración|Origen de datos|Fuente pagos|Calculado:/);
+  const missing = renderToStaticMarkup(React.createElement(AnalyticsMetadata, { value: {
+    data_origin: 'real', computed_at: '2026-10-01T12:30:00Z',
+    freshness: { calculation_stale: false, sources: [{ name: 'daily', missing: true, stale: false }] },
+  } }));
+  assert.match(missing, /Falta información para completar algunos indicadores/);
+  assert.match(missing, /hora de Santiago/);
+  assert.doesNotMatch(missing, /Fuente indicadores diarios|Datos de fuentes reales/);
 });
 
 test('planes preservan un precio de cero y distinguen ausencia', () => {
@@ -98,6 +106,10 @@ test('pantalla muestra ambas conversiones y separa descargas, sin inventar unida
   assert.match(html, /Respecto de etapa anterior/);
   assert.match(html, /No comparable/);
   assert.match(html, /Provisional: seguimiento en curso/);
-  assert.match(html, /Descargas acumuladas: 20/);
+  assert.match(html, /Descargas acumuladas/);
+  assert.match(html, />20</);
+  assert.match(html, /Período de consulta/);
+  assert.match(html, /Usuarios e ingresos al cierre disponible/);
+  assert.doesNotMatch(html, /Origen de datos|Fuente indicadores diarios|Datos de demostración/);
   assert.match(html, /unidad facturable de los planes está pendiente/);
 });

@@ -7,12 +7,22 @@ const ts = require('typescript');
 function client() {
   const calls = [];
   const request = async (url, options) => { calls.push({ url, options }); return new Response(JSON.stringify({ recovery_codes: [] })); };
-  const scope = { exports: {}, fetch: request, require: () => ({ API_BASE_URL: 'http://api', apiFetch: request }) };
+  const scope = { exports: {}, fetch: request, require: () => ({ API_BASE_URL: 'http://api', apiFetch: request, publicFetch: request }) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/api/accountAccess.ts', 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText, scope);
   return { api: scope.exports, calls };
 }
+
+test('recuperación usa peticiones públicas y mantiene token y contraseña fuera de la URL', async () => {
+  const { api, calls } = client();
+  await api.requestPasswordReset('person@example.org');
+  await api.confirmPasswordReset('private-reset-token', 'NewPrivatePassword123!');
+  assert.equal(calls[0].url, 'http://api/auth/password-reset/request');
+  assert.equal(calls[1].url, 'http://api/auth/password-reset/confirm');
+  assert.deepEqual(JSON.parse(calls[1].options.body), { token: 'private-reset-token', password: 'NewPrivatePassword123!' });
+  assert.ok(calls.every(call => call.options.cache === 'no-store' && !call.url.includes('private-reset-token') && !call.url.includes('NewPrivatePassword')));
+});
 test('acepta invitaciones sin sesión y envía los secretos en el cuerpo, sin ponerlos en la URL', async () => {
   const { api, calls } = client();
   await api.inspectInvitation('private-token');

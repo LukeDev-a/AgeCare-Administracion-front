@@ -6,8 +6,8 @@ const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 class FormValues { constructor(values) { this.values = values; } get(name) { return this.values[name] ?? null; } }
-function load(path, dependencies = {}) {
-  const scope = { exports: {}, Error, URLSearchParams, FormData: FormValues, require: name => dependencies[name] ?? require(name) };
+function load(path, dependencies = {}, globals = {}) {
+  const scope = { exports: {}, Error, URLSearchParams, FormData: FormValues, ...globals, require: name => dependencies[name] ?? require(name) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, scope);
@@ -22,7 +22,7 @@ const sample = { id: 'incident-1', title: 'Incidente original', description: 'De
   updated_at: '2026-10-26T12:00:00Z', notification_status: 'not_configured' };
 function hooks() {
   const states = []; let cursor = 0, effects = [];
-  return { reset() { cursor = 0; effects = []; }, run() { effects.forEach(effect => effect()); }, react: {
+  return { reset() { cursor = 0; effects = []; }, run() { return effects.map(effect => effect()); }, react: {
     useState: initial => { const index = cursor++; if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial;
       return [states[index], next => { states[index] = typeof next === 'function' ? next(states[index]) : next; }]; },
     useEffect: effect => effects.push(effect),
@@ -110,6 +110,7 @@ test('panel consulta, pagina, filtra y muestra detalle sin edición para analyst
     react: h.react, '../../auth/AuthContext': { useAuth: () => ({ user: { role: 'analyst' } }) },
     '../../routes/permissions': permissions, '../../lib/operationalMeta': ops, '../../lib/incidentsMeta': meta,
     './IncidentForm': { IncidentForm: () => assert.fail('Analyst no debe montar editor') },
+    './LoadingIndicator': load('src/pages/operativo/LoadingIndicator.tsx'),
     '../../api/incidents': { fetchIncidents: async filters => { calls.push(filters);
       return { items: [sample], page: filters.page, page_size: 10, total: 11 }; } },
   });
@@ -130,4 +131,36 @@ test('panel consulta, pagina, filtra y muestra detalle sin edición para analyst
   assert.equal(calls[2].page, 1);
   assert.equal(calls[2].days, 7);
   assert.equal(calls[2].status, 'resolved');
+});
+
+test('un aviso pendiente consulta el envío y actualiza el detalle abierto al ser aceptado', async () => {
+  const h = hooks();
+  let mailState = 'queued', poll, cleared = 0;
+  const { IncidentsPanel } = load('src/pages/operativo/IncidentsPanel.tsx', {
+    react: h.react, '../../auth/AuthContext': { useAuth: () => ({ user: { role: 'analyst' } }) },
+    '../../routes/permissions': permissions, '../../lib/operationalMeta': ops, '../../lib/incidentsMeta': meta,
+    './IncidentForm': { IncidentForm: () => null },
+    './LoadingIndicator': load('src/pages/operativo/LoadingIndicator.tsx'),
+    '../../api/incidents': { fetchIncidents: async () => ({ items: [{ ...sample, notification_status: mailState }], page: 1, total: 1 }) },
+  }, { window: { setInterval: (callback, delay) => { assert.equal(delay, 5000); poll = callback; return 1; }, clearInterval: () => { cleared++; } } });
+  const render = () => { h.reset(); return IncidentsPanel({}); };
+  render(); h.run(); await new Promise(resolve => setImmediate(resolve));
+  let tree = render();
+  find(tree, node => node.type === 'button' && node.props.children === 'Ver detalle').props.onClick();
+  tree = render();
+  assert.match(renderToStaticMarkup(tree), /Aviso por correo pendiente de envío/);
+  const cleanups = h.run();
+  await new Promise(resolve => setImmediate(resolve));
+  mailState = 'sent';
+  poll();
+  cleanups.forEach(cleanup => cleanup?.());
+  render(); h.run(); await new Promise(resolve => setImmediate(resolve));
+  tree = render();
+  const html = renderToStaticMarkup(tree);
+  assert.match(html, /Aviso aceptado por el servidor de correo/);
+  assert.doesNotMatch(html, /Aviso por correo pendiente de envío/);
+  assert.equal(cleared, 1);
+  poll = undefined;
+  h.run();
+  assert.equal(poll, undefined);
 });

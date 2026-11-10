@@ -5,6 +5,7 @@ export function createSessionClient(
   baseUrl: string,
   onToken: (token: string) => void,
   onExpired: () => void,
+  transport: typeof fetch = (...args) => fetch(...args),
 ) {
   let pendingRefresh: Promise<string | null> | null = null;
 
@@ -29,7 +30,7 @@ export function createSessionClient(
     }
     // Las consultas simultáneas comparten una única rotación del refresh token.
     pendingRefresh = (async () => {
-      const response = await fetch(`${baseUrl}/auth/refresh`, {
+      const response = await transport(`${baseUrl}/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: previousRefresh }),
@@ -78,7 +79,7 @@ export function createSessionClient(
       const headers = new Headers(options.headers);
       if (current) headers.set("Authorization", `Bearer ${current}`);
       if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-      return fetch(`${baseUrl}${path}`, { ...options, headers });
+      return transport(`${baseUrl}${path}`, { ...options, headers });
     };
     const response = await send(access);
     if (response.status !== 401 || !access) return response;
@@ -96,7 +97,7 @@ export function createSessionClient(
       const access = await ensureFresh();
       const refreshToken = sessionStorage.getItem(REFRESH_KEY);
       if (access && refreshToken) {
-        await fetch(`${baseUrl}/auth/logout`, {
+        await transport(`${baseUrl}/auth/logout`, {
           method: "POST",
           headers: { Authorization: `Bearer ${access}`, "Content-Type": "application/json" },
           body: JSON.stringify({ refresh_token: refreshToken }),

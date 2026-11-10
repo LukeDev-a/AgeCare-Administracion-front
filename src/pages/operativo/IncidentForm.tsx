@@ -46,8 +46,8 @@ export function IncidentForm({ incident, onSaved, onCancel }: {
   }
   if (!allowed) return null;
   const closing = state !== incident?.status && (state === 'resolved' || state === 'completed');
-  return <form className="ticket-form" onSubmit={event => void submit(event)}>
-    <h3 className="wide">{incident ? 'Actualizar registro' : 'Registrar incidente o mantenimiento'}</h3>
+  return <form className="ticket-form tw:gap-5 tw:rounded-xl tw:border tw:border-solid tw:border-stroke tw:bg-panel tw:p-5 tw:[&_label]:gap-2 tw:[&_label]:text-sm tw:[&_input]:min-h-11 tw:[&_input]:min-w-0 tw:[&_select]:min-h-11 tw:[&_select]:min-w-0 tw:[&_textarea]:min-h-32 tw:[&_textarea]:text-sm tw:[&_input]:text-sm tw:[&_select]:text-sm tw:[&_input[type=checkbox]]:min-h-0 tw:[&_input[type=checkbox]]:accent-brand" onSubmit={event => void submit(event)}>
+    <h3 className="wide tw:text-lg tw:font-bold">{incident ? 'Actualizar registro' : 'Registrar incidente o mantenimiento'}</h3>
     {!incident && <>
       <label className="wide">Título<input name="title" minLength={5} maxLength={160} required disabled={busy} /></label>
       <label>Severidad<select name="severity" disabled={busy}><option value="degraded">Servicio degradado</option><option value="outage">Fuera de servicio</option></select></label>
