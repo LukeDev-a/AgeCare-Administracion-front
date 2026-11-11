@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { createContent } from '../../api/content';
+import { contentStyles as ui } from './contentStyles';
+import { Modal } from '../../components/Modal';
 
 interface NewContentFormProps {
   onCreated: () => void;
@@ -8,6 +10,8 @@ interface NewContentFormProps {
 
 export function NewContentForm({ onCreated, onCancel }: NewContentFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [dirty, setDirty] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -15,25 +19,27 @@ export function NewContentForm({ onCreated, onCancel }: NewContentFormProps) {
     const data = new FormData(form);
     const tags = String(data.get('tags') ?? '').split(',').map(tag => tag.trim()).filter(Boolean);
     setIsSubmitting(true);
+    setError('');
     try {
       await createContent({
         type: String(data.get('type') ?? 'news'),
         title: String(data.get('title') ?? ''),
         body: String(data.get('body') ?? ''),
         tags,
-        publish_at: data.get('publish_at') ? new Date(String(data.get('publish_at'))).toISOString() : null,
       });
       form.reset();
       onCreated();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'No fue posible crear el contenido.');
+      setError(err instanceof Error ? err.message : 'No fue posible crear el contenido.');
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <form className="ticket-form" onSubmit={event => void handleSubmit(event)}>
+    <Modal title="Crear contenido" onClose={onCancel} dirty={dirty} busy={isSubmitting}>
+    <form className={`${ui.form} tw:rounded-xl tw:border tw:border-solid tw:border-stroke tw:p-5`} onChange={() => setDirty(true)} onSubmit={event => void handleSubmit(event)}>
+      <div className="tw:col-span-full"><h3 className={ui.heading}>Crear contenido manualmente</h3><p className={ui.description}>Guarda el texto para revisarlo y continuar después con aprobación, audio y publicación.</p></div>
       <label>
         Tipo
         <select name="type" defaultValue="news">
@@ -45,22 +51,22 @@ export function NewContentForm({ onCreated, onCancel }: NewContentFormProps) {
         Título
         <input name="title" minLength={3} maxLength={160} required />
       </label>
-      <label className="wide">
+      <label className="tw:col-span-full">
         Contenido
-        <textarea name="body" minLength={10} maxLength={4000} required />
+        <textarea name="body" rows={7} minLength={10} maxLength={4000} required />
       </label>
       <label>
         Etiquetas
         <input name="tags" placeholder="salud, familia" />
       </label>
-      <div className="ticket-form-actions">
-        <label>Programar publicación (hora local)<input type="datetime-local" name="publish_at" />
-          <small>Solo se publicará con aprobación editorial y audio vigente.</small></label>
-        <button className="action-button" type="button" onClick={onCancel}>Cerrar formulario</button>
-        <button className="action-button" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Guardando...' : 'Guardar contenido'}
-        </button>
+      <div className="tw:col-span-full tw:space-y-5">
+        <p className="tw:text-sm tw:text-muted">Primero guarda el borrador. Después podrás aprobar el texto, generar el audio y elegir una fecha de publicación.</p>
+        {error && <p role="alert" className={ui.error}>{error}</p>}
+        <div className={`${ui.actions} tw:justify-end`}>
+        <button className={`${ui.button} ${ui.primary}`} type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Guardando...' : 'Guardar borrador'}
+        </button></div>
       </div>
-    </form>
+    </form></Modal>
   );
 }

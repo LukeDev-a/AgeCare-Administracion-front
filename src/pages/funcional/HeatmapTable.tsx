@@ -11,33 +11,34 @@ export function HeatmapTable({ data }: { data: FeatureAdoption }) {
   }
   if (!data.features.length || !data.roles.length) return <p>Sin datos de adopción para este período.</p>;
   return (
-    <table className="heat">
+    <table className="tw:w-full tw:min-w-[720px] tw:border-collapse tw:text-sm tw:[&_th]:px-5 tw:[&_th]:py-5 tw:[&_td]:border tw:[&_td]:border-solid tw:[&_td]:border-stroke tw:[&_td]:px-5 tw:[&_td]:py-5 tw:[&_td]:text-center">
       <thead>
         <tr>
-          <th />
+          <th scope="col" className="tw:bg-canvas tw:text-left tw:font-semibold">Funcionalidad</th>
           {data.roles.map(role => (
-            <th key={role}>{featureRoleName(role)}</th>
+            <th key={role} scope="col" className="tw:min-w-36 tw:bg-canvas tw:font-semibold">{featureRoleName(role)}</th>
           ))}
         </tr>
       </thead>
       <tbody>
         {data.features.map(feature => (
           <tr key={feature.feature_key}>
-            <th className="rowh">{feature.name}</th>
+            <th scope="row" className="tw:border-t tw:border-solid tw:border-stroke tw:text-left tw:font-semibold">{feature.name}</th>
             {feature.adoption.map((rate, index) => {
               const details = feature.calculation_details?.[index];
               if (details?.status === 'not_applicable' || details?.status === 'not_calculable') {
                 const label = details.status === 'not_applicable' ? 'No aplica' : 'No calculable';
-                return <td key={index} className="na" title={featureCalculationReason(details.reason)}>
-                  {label}{details.status === 'not_calculable' && <div style={{ fontSize: 11, fontWeight: 400, marginTop: 4 }}>{featureCalculationReason(details.reason)}</div>}
+                return <td key={index} className="tw:bg-canvas tw:text-muted" title={featureCalculationReason(details.reason)}>
+                  <span className="tw:font-semibold">{label}</span>{details.status === 'not_calculable' && <div className="tw:mt-2 tw:text-sm tw:leading-relaxed">{featureCalculationReason(details.reason)}</div>}
                 </td>;
               }
-              if (rate == null) return <td key={index} className="na" title="Estado de cálculo sin informar">Sin datos</td>;
+              if (rate == null) return <td key={index} className="tw:bg-canvas tw:text-muted" title="Estado de cálculo sin informar">Sin datos</td>;
               const value = rate * 100;
               const display = adoptionPercent(rate);
               return (
                 <td
                   key={index}
+                  className="tw:text-base tw:font-bold tw:tabular-nums"
                   style={{ background: heatColor(value), color: heatInk(value) }}
                   title={`${feature.name} — ${featureRoleName(data.roles[index])}: ${display} informado para los activos del perfil`}
                 >

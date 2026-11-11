@@ -4,7 +4,7 @@ export const CONTENT_TYPES: Record<string, string> = {
 };
 
 export const AUDIO_STATES: Record<string, string> = {
-  pending: 'Pendiente de revisión', queued: 'En cola', waiting_quota: 'Esperando cuota gratuita',
+  pending: 'Pendiente de revisión', queued: 'Preparando audio', waiting_quota: 'Esperando cuota gratuita',
   ready: 'Disponible', failed: 'Generación fallida',
 };
 export const CONTENT_ERRORS: Record<string, string> = {

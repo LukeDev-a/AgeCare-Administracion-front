@@ -48,6 +48,6 @@ export async function deactivateEndUser(id: string, reason: string): Promise<Dea
   const result = await read<DeactivationResult>(await apiFetch(`/end-users/${encodeURIComponent(id)}/deactivate`, {
     method: 'POST', body: JSON.stringify({ confirmation_user_id: id, reason: reason.trim() }),
   }));
-  if (result.mobile_sessions_revoked !== false) throw new Error('La respuesta no corresponde a una desactivación de demostración.');
+  if (result.mobile_sessions_revoked !== false) throw new Error('No fue posible validar la respuesta de desactivación.');
   return result;
 }

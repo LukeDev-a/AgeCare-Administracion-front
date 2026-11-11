@@ -59,9 +59,10 @@ export async function createContent(payload: { type: string; title: string; body
   if (!response.ok) throw new Error(await parseErrorMessage(response, 'No fue posible crear el contenido.'));
 }
 
-export async function updateContent(contentId: string, payload: { title: string; body: string; tags: string[]; publish_at?: string | null }): Promise<void> {
+export async function updateContent(contentId: string, payload: { title?: string; body?: string; tags?: string[]; publish_at?: string | null }): Promise<ContentItem> {
   const response = await apiFetch(`/content/items/${contentId}`, { method: 'PATCH', body: JSON.stringify(payload) });
   if (!response.ok) throw new Error(await parseErrorMessage(response, 'No fue posible guardar el contenido.'));
+  return response.json();
 }
 
 export async function changeContentPublication(contentId: string, unpublish: boolean): Promise<void> {

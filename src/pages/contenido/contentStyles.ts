@@ -1,0 +1,16 @@
+export const contentStyles = {
+  panel: 'tw:rounded-2xl tw:border tw:border-solid tw:border-stroke tw:bg-panel tw:p-5 tw:sm:p-7',
+  heading: 'tw:text-xl tw:font-bold tw:tracking-tight',
+  description: 'tw:mt-2 tw:mb-5 tw:max-w-3xl tw:leading-relaxed tw:text-muted',
+  label: 'tw:grid tw:gap-2 tw:font-semibold',
+  field: 'tw:min-h-11 tw:w-full tw:min-w-0 tw:rounded-xl tw:border tw:border-solid tw:border-stroke tw:bg-canvas tw:px-3 tw:py-2.5 tw:text-base tw:text-ink tw:focus-visible:outline-2 tw:focus-visible:outline-brand',
+  button: 'tw:min-h-11 tw:cursor-pointer tw:rounded-xl tw:border tw:border-solid tw:border-stroke tw:bg-panel tw:px-4 tw:py-2.5 tw:text-sm tw:font-semibold tw:text-ink tw:hover:bg-canvas tw:disabled:cursor-not-allowed tw:disabled:opacity-50 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand',
+  primary: 'tw:border-brand tw:bg-brand-soft tw:text-brand-ink',
+  notice: 'tw:my-4 tw:rounded-xl tw:bg-canvas tw:p-5 tw:leading-relaxed tw:text-muted',
+  error: 'tw:my-4 tw:rounded-xl tw:bg-warning-bg tw:p-5 tw:leading-relaxed tw:text-ink',
+  actions: 'tw:flex tw:flex-wrap tw:items-center tw:gap-3',
+  table: 'tw:w-full tw:min-w-[800px] tw:border-collapse tw:text-left tw:text-sm tw:[&_th]:bg-canvas tw:[&_th]:px-4 tw:[&_th]:py-4 tw:[&_th]:font-semibold tw:[&_td]:border-t tw:[&_td]:border-solid tw:[&_td]:border-stroke tw:[&_td]:px-4 tw:[&_td]:py-5 tw:[&_td]:leading-relaxed',
+  scroll: 'tw:overflow-x-auto tw:rounded-xl tw:border tw:border-solid tw:border-stroke',
+  step: 'tw:space-y-5 tw:rounded-xl tw:border tw:border-solid tw:border-stroke tw:p-5 tw:sm:p-6',
+  form: 'tw:grid tw:gap-5 tw:sm:grid-cols-2 tw:[&_label]:grid tw:[&_label]:gap-2 tw:[&_label]:font-semibold tw:[&_input]:min-h-11 tw:[&_input]:min-w-0 tw:[&_input]:rounded-xl tw:[&_input]:border tw:[&_input]:border-solid tw:[&_input]:border-stroke tw:[&_input]:bg-canvas tw:[&_input]:px-3 tw:[&_input]:py-2.5 tw:[&_input]:text-base tw:[&_input]:text-ink tw:[&_select]:min-h-11 tw:[&_select]:rounded-xl tw:[&_select]:border tw:[&_select]:border-solid tw:[&_select]:border-stroke tw:[&_select]:bg-canvas tw:[&_select]:px-3 tw:[&_select]:py-2.5 tw:[&_select]:text-base tw:[&_select]:text-ink tw:[&_textarea]:min-h-48 tw:[&_textarea]:rounded-xl tw:[&_textarea]:border tw:[&_textarea]:border-solid tw:[&_textarea]:border-stroke tw:[&_textarea]:bg-canvas tw:[&_textarea]:px-4 tw:[&_textarea]:py-3 tw:[&_textarea]:text-base tw:[&_textarea]:leading-8 tw:[&_textarea]:text-ink',
+};

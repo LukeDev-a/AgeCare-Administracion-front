@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { createTicket, TicketApiError, type NewTicketPayload, type TicketPriority } from '../../api/tickets';
 import { useAuth } from '../../auth/AuthContext';
 import { canManageTickets } from '../../routes/permissions';
+import { ticketStyles as ui } from './ticketStyles';
 
 interface NewTicketFormProps {
   onCreated: () => void;
@@ -45,12 +46,13 @@ export function NewTicketForm({ onCreated, onCancel }: NewTicketFormProps) {
   if (!canManage) return null;
 
   return (
-    <form className="ticket-form" onSubmit={event => void handleSubmit(event)}>
-      {error && <p role="alert" className="wide">{error}</p>}
-      {pending && <div className="wide" role="alert">
+    <form className={`${ui.panel} ${ui.form}`} onSubmit={event => void handleSubmit(event)}>
+      <div className="tw:col-span-full"><h2 className={ui.heading}>Crear un ticket</h2><p className={ui.description}>Describe la solicitud y elige su categoría y prioridad para facilitar su atención.</p></div>
+      {error && <p role="alert" className={`${ui.error} tw:col-span-full`}>{error}</p>}
+      {pending && <div className={`${ui.error} tw:col-span-full`} role="alert">
         <p>No se pudo enlazar {pending.user_email} con una cuenta. ¿Deseas crear el ticket sin enlace? Puedes volver para revisar el correo.</p>
-        <button type="button" disabled={isSubmitting} onClick={() => void save({ ...pending, confirm_unlinked: true })}>Confirmar creación sin enlace</button>
-        <button type="button" disabled={isSubmitting} onClick={() => setPending(null)}>Volver y revisar</button>
+        <div className={`${ui.actions} tw:mt-4`}><button className={ui.button} type="button" disabled={isSubmitting} onClick={() => void save({ ...pending, confirm_unlinked: true })}>Confirmar creación sin enlace</button>
+        <button className={ui.button} type="button" disabled={isSubmitting} onClick={() => setPending(null)}>Volver y revisar</button></div>
       </div>}
       <fieldset disabled={isSubmitting || !!pending} className="wide" style={{ border: 0, padding: 0, display: 'contents' }}>
       <label>
@@ -81,9 +83,9 @@ export function NewTicketForm({ onCreated, onCancel }: NewTicketFormProps) {
           <option value="critical">Crítica</option>
         </select>
       </label>
-      <label className="wide">
+      <label className="tw:col-span-full">
         Descripción
-        <textarea name="description" minLength={1} maxLength={8000} required />
+        <textarea name="description" rows={5} minLength={1} maxLength={8000} required />
       </label>
       <label>Canal de origen
         <select name="channel" defaultValue="console">
@@ -92,9 +94,9 @@ export function NewTicketForm({ onCreated, onCancel }: NewTicketFormProps) {
         </select>
       </label>
       </fieldset>
-      <div className="ticket-form-actions">
-        <button className="action-button" type="button" onClick={onCancel}>Cerrar formulario</button>
-        <button className="action-button" type="submit" disabled={isSubmitting || !!pending}>
+      <div className={`${ui.actions} tw:col-span-full tw:justify-end tw:border-t tw:border-solid tw:border-stroke tw:pt-5`}>
+        <button className={ui.button} type="button" onClick={onCancel}>Cerrar formulario</button>
+        <button className={`${ui.button} ${ui.primary}`} type="submit" disabled={isSubmitting || !!pending}>
           {isSubmitting ? 'Guardando...' : 'Guardar ticket'}
         </button>
       </div>

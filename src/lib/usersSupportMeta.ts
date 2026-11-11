@@ -1,7 +1,8 @@
 import type { WeeklyPeriod } from '../api/usersSupport';
 
 export const usersSupportDate = (value: string | null | undefined) => value
-  ? new Date(value).toLocaleString('es-CL', { timeZone: 'America/Santiago' }) : 'Sin datos';
+  ? new Date(value).toLocaleString('es-CL', { timeZone: 'America/Santiago', day: 'numeric', month: 'short',
+    year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) : 'Sin datos';
 
 // Fechas civiles: UTC solo evita desplazarlas al día anterior en el navegador.
 const civilDate = (value: string) => new Date(`${value}T00:00:00Z`);

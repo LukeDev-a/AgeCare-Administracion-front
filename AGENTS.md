@@ -9,9 +9,10 @@ React + TypeScript + Vite. Lee [docs/CONTEXTO-TECNICO.md](docs/CONTEXTO-TECNICO.
 - La autorización efectiva está en el backend. Menú y rutas usan los permisos del perfil en `src/routes/permissions.ts`; esto no acredita que todos los botones de modificación se oculten para roles de lectura.
 - Usa los estilos existentes y variables de tema en `src/index.css`. Preserva el comportamiento de tema claro/oscuro.
 - Uso comercial adopta Tailwind mediante `@tailwindcss/vite` y `src/tailwind.css`. Las utilidades llevan prefijo `tw:` y usan colores ligados a variables de tema. Se importan theme y utilities, con prioridad importante para convivir con CSS existente. Conservar esta integración gradual al extender el diseño.
+- Curación de contenido usa `src/components/Modal.tsx` para creación, edición/aprobación y revisión de noticias. Cierre explícito, confirmación de cambios sin guardar y bloqueo durante envíos. El usuario quiere extenderlo gradualmente; no migrar otros módulos sin petición.
 - No reconstruyas el rastreo de clics como auditoría. La vista consume cambios de negocio registrados por el backend.
 - Desde fase 17 también muestra logins correctos/fallidos y consultas de conversaciones, autorizados expresamente; conserva esa distinción sin capturar navegación general. Contrato en Requerimientos/fase-17 y docs/auditoria-administrativa.md del backend.
-- /usuarios-app (fase18) es directorio de demostración solo admin, distinto de /usuarios (analítica) y /cuentas (personal). Preserva avisos de demo y validación data_origin/deactivation_effect; no anunciar revocación móvil por una desactivación de prueba. Integración real pendiente.
+- /usuarios-app (fase18) es directorio de demostración solo admin, distinto de /usuarios (analítica) y /cuentas (personal). Por instrucción del usuario del 11 de noviembre, sus textos visibles son los de la versión final, sin avisos de prueba/demo. Mantén la validación interna data_origin/deactivation_effect y documenta que la integración móvil real sigue pendiente; no afirmar revocación de sesiones en la interfaz.
 - No registres tokens, secretos QR, códigos de recuperación o contraseñas. Respeta el carácter de una sola visualización de los códigos.
 
 Verificaciones desde esta carpeta:

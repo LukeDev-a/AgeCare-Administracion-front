@@ -66,13 +66,13 @@ test('servicios rechazan procedencia ambigua y propagan indisponibilidad sin pre
   response = new Response(JSON.stringify({ error: { message: 'Servicio móvil no conectado' } }), { status: 503 });
   await assert.rejects(api.fetchPatients('', 1), /no conectado/);
   response = new Response(JSON.stringify({ ...source, user: account, mobile_sessions_revoked: true }));
-  await assert.rejects(api.deactivateEndUser('account-1', 'Prueba'), /demostración/);
+  await assert.rejects(api.deactivateEndUser('account-1', 'Prueba'), /validar la respuesta/);
 });
 
 test('detalle explica perfil por paciente, no ofrece edición clínica ni desactivación de ficha paciente', () => {
   const html = renderToStaticMarkup(React.createElement(Detail, { record: account, onSelect() {}, onDeactivate() {}, onClose() {} }));
   assert.ok(html.includes('Familiar') && html.includes('Cuidador/a') && html.includes('Paciente uno') && html.includes('Paciente dos'));
-  assert.ok(html.includes('Desactivar cuenta de prueba'));
+  assert.ok(html.includes('Desactivar cuenta'));
   const other = renderToStaticMarkup(React.createElement(Detail, { record: patient, onSelect() {}, onDeactivate() {}, onClose() {} }));
   assert.ok(other.includes('no tiene miembros vinculados') && other.includes('no implica que exista una cuenta'));
   assert.ok(!other.includes('Desactivar cuenta') && !other.includes('Editar') && !other.includes('Eliminar'));
@@ -83,7 +83,8 @@ test('desactivación requiere motivo y casilla, conserva error y no cierra por c
   const form = mount('src/pages/usuarios-app/DeactivateDialog.tsx', 'DeactivateDialog', {}, {
     user: account, onConfirm: async reason => { calls.push(reason); throw new Error('Conflicto de prueba'); }, onClose() {},
   });
-  assert.ok(form.html().includes('No bloquea ninguna cuenta ni sesión móvil real'));
+  assert.ok(form.html().includes('La cuenta quedará inactiva'));
+  assert.ok(form.html().includes('Se conservarán sus datos y vínculos de cuidado'));
   assert.equal(form.find(n => n.type === 'button' && n.props.type === 'submit').props.disabled, true);
   assert.equal(form.tree().props.onClick, undefined);
   form.find(n => n.type === 'textarea').props.onChange({ target: { value: '  Solicitud válida  ' } });
@@ -104,11 +105,11 @@ function screen(api, role = 'admin') {
     './DirectoryDetail': { DirectoryDetail: Detail }, './DeactivateDialog': { DeactivateDialog: Dialog },
   });
 }
-test('pantalla muestra demostración, consulta filtros/páginas y descarta respuestas tardías de otro directorio', async () => {
+test('pantalla sin aviso superior consulta filtros/páginas y descarta respuestas tardías de otro directorio', async () => {
   const pending = [], calls = [];
   const h = screen({ fetchEndUsers: (...args) => { calls.push(args.slice(0, 3)); return new Promise(resolve => pending.push(resolve)); },
     fetchPatients: async () => page([patient]), fetchEndUser: async () => account, fetchPatient: async () => patient });
-  await h.settle(); assert.ok(h.html().includes('Demostración'));
+  await h.settle(); assert.ok(!h.html().includes('Datos de demostración'));
   h.find(n => n.type === 'button' && n.props.children === 'Pacientes').props.onClick(); await h.settle();
   pending[0](page([{ ...account, full_name: 'Respuesta antigua' }])); await h.settle();
   assert.ok(h.html().includes('Paciente uno') && !h.html().includes('Respuesta antigua'));
@@ -137,7 +138,7 @@ test('pantalla distingue fallo de listado vacío y los otros cuatro roles no con
   await empty.settle(); assert.ok(empty.html().includes('No hay coincidencias'));
 });
 
-test('confirmar desactivación actualiza estado y conserva la advertencia de sesiones reales pendientes', async () => {
+test('confirmar desactivación actualiza estado y confirma conservación de vínculos', async () => {
   let active = true;
   const h = screen({ fetchEndUsers: async () => page([{ ...account, is_active: active }]),
     fetchEndUser: async () => ({ ...account, is_active: active }),
@@ -147,6 +148,6 @@ test('confirmar desactivación actualiza estado y conserva la advertencia de ses
   h.find(n => n.type === 'button' && n.props.children === 'Ver detalle').props.onClick(); await h.settle();
   h.find(n => n.type === Detail).props.onDeactivate(account);
   await h.find(n => n.type === Dialog).props.onConfirm('Solicitud de prueba'); await h.settle();
-  assert.ok(h.html().includes('Inactiva') && h.html().includes('No se modificaron cuentas ni sesiones móviles reales'));
+  assert.ok(h.html().includes('Inactiva') && h.html().includes('Cuenta desactivada. Se conservan sus datos y vínculos de cuidado'));
   assert.equal(h.find(n => n.type === Dialog), undefined);
 });

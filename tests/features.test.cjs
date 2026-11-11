@@ -70,8 +70,7 @@ function find(node, predicate) {
   return predicate(node) ? node : find(node.props?.children, predicate);
 }
 function section(tree, title) {
-  return find(tree, node => node.type === 'section' && !!find(node.props.children,
-    child => child.type === 'div' && child.props.className === 'card-title' && child.props.children === title));
+  return find(tree, node => node.type === 'section' && node.props['aria-label'] === title);
 }
 function harness(overrides = {}) {
   const state = [], calls = { adoption: [], top: [], alerts: [] };
@@ -113,7 +112,7 @@ test('ranking y alertas cambian independientemente, sin limitar el ranking al pr
   assert.equal(h.calls.top[1].limit, 5); assert.equal(h.calls.alerts[1].threshold, .5);
   const html = renderToStaticMarkup(tree);
   assert.match(html, /Por debajo de 50%/); assert.match(html, /Uso bajo esperado/); assert.match(html, /Revisar uso bajo/);
-  assert.match(html, /Calculado:/);
+  assert.match(html, /Última actualización de los indicadores/);
 });
 
 test('cambiar período ignora respuestas anteriores y consulta las tres secciones', async () => {
@@ -121,7 +120,7 @@ test('cambiar período ignora respuestas anteriores y consulta las tres seccione
   const h = harness({ adoption: days => days === 30 ? new Promise(resolve => { resolveOld = resolve; })
     : Promise.resolve({ days, roles: [], features: [], computed_at: at }) });
   h.render(); await h.flush();
-  find(h.render(), node => node.props?.periods).props.onChange(90);
+  find(h.render(), node => node.type === 'select' && node.props['aria-label'] === 'Período de consulta').props.onChange({ target: { value: '90' } });
   h.render(); await h.flush();
   resolveOld({ days: 30, roles: [], features: [], computed_at: at });
   await new Promise(resolve => setImmediate(resolve));
@@ -197,4 +196,27 @@ test('el cero calculable sigue visible en ranking y alerta validada', async () =
   const tree = h.render();
   assert.match(renderToStaticMarkup(section(tree, 'Más utilizadas por perfil')), /Cero válido: 0%/);
   assert.match(renderToStaticMarkup(section(tree, 'Alertas de uso bajo')), /Adulto mayor: 0%/);
+});
+
+test('las secciones conservan ranking y umbral sin repetir consultas al navegar', async () => {
+  const h = harness(); h.render(); await h.flush();
+  let tree = h.render();
+  assert.equal(find(tree, node => node.props?.id === 'features-comparison').props.hidden, false);
+  find(section(tree, 'Más utilizadas por perfil'), node => node.type === 'select').props.onChange({ target: { value: '3' } });
+  h.render(); await h.flush(); tree = h.render();
+  find(section(tree, 'Alertas de uso bajo'), node => node.type === 'form').props.onSubmit({ preventDefault() {}, currentTarget: { threshold: '25' } });
+  h.render(); await h.flush(); tree = h.render();
+  for (const selected of ['ranking', 'alerts', 'comparison']) {
+    find(tree, node => node.type === 'button' && node.props['aria-controls'] === `features-${selected}`).props.onClick();
+    tree = h.render(); await h.flush();
+    assert.equal(find(tree, node => node.props?.id === `features-${selected}`).props.hidden, false);
+    for (const other of ['ranking', 'alerts', 'comparison'].filter(key => key !== selected)) {
+      assert.equal(find(tree, node => node.props?.id === `features-${other}`).props.hidden, true);
+    }
+  }
+  assert.equal(find(section(tree, 'Más utilizadas por perfil'), node => node.type === 'select').props.value, 3);
+  assert.match(renderToStaticMarkup(section(tree, 'Alertas de uso bajo')), /Por debajo de 25%/);
+  assert.deepEqual(h.calls.adoption, [30]);
+  assert.equal(h.calls.top.length, 2);
+  assert.equal(h.calls.alerts.length, 2);
 });

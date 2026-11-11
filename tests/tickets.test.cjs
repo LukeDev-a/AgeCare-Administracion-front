@@ -7,7 +7,8 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 class FormValues { constructor(values) { this.values = values; } get(name) { return this.values[name]; } }
 function load(path, dependencies = {}) {
-  const scope = { exports: {}, Error, URLSearchParams, FormData: FormValues, require: name => dependencies[name] ?? require(name) };
+  const scope = { exports: {}, Error, URLSearchParams, FormData: FormValues, require: name => dependencies[name]
+    ?? (name === './ticketStyles' ? load('src/pages/tickets/ticketStyles.ts') : require(name)) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, scope);
@@ -89,7 +90,7 @@ const ticket = { id: 'uuid', number: 100, subject: 'Prueba', description: 'Descr
   created_at: '2026-10-27', updated_at: '2026-10-27', first_response_at: null, replies_count: 26,
   requester_context: { dispositivo: 'Teléfono' }, csat: { score: 4, comment: 'Gracias' } };
 
-test('detalle pagina conversación, muestra contexto/CSAT y manda solo campos modificados', async () => {
+test('detalle pagina conversación, muestra contexto sin encuestas y manda solo campos modificados', async () => {
   const pages = [], patches = [];
   const detail = mount('src/pages/tickets/TicketDetail.tsx', 'TicketDetail', { '../../api/tickets': {
     fetchTicketDetail: async () => ticket, fetchAgents: async () => [],
@@ -97,7 +98,8 @@ test('detalle pagina conversación, muestra contexto/CSAT y manda solo campos mo
     updateTicket: async (_id, patch) => patches.push(patch),
   } }, { ticketId: 'uuid', onTicketUpdated() {} });
   await detail.settle();
-  assert.match(detail.html(), /Teléfono/); assert.match(detail.html(), /4\/5 · Gracias/);
+  assert.match(detail.html(), /Teléfono/);
+  assert.doesNotMatch(detail.html(), /Encuesta de satisfacción|4\/5 · Gracias|Sin encuesta respondida/);
   assert.match(detail.html(), /Nota interna · solo personal autorizado/);
   const statusOptions = detail.find(node => node.type === 'select' && node.props.id === 'ticket-status-update').props.children;
   assert.deepEqual(Array.from(statusOptions, node => node.props.value), ['open', 'in_progress', 'resolved']);
@@ -110,6 +112,26 @@ test('detalle pagina conversación, muestra contexto/CSAT y manda solo campos mo
   detail.find(node => node.type === 'button' && node.props.children === 'Mensajes siguientes').props.onClick();
   await detail.settle();
   assert.equal(pages.at(-1), 2); assert.match(detail.html(), /Mensaje 2/); assert.match(detail.html(), /Respuesta pública/);
+});
+
+test('un fallo al guardar se muestra en pantalla y conserva cambios y respuesta escrita', async () => {
+  const detail = mount('src/pages/tickets/TicketDetail.tsx', 'TicketDetail', { '../../api/tickets': {
+    fetchTicketDetail: async () => ticket, fetchAgents: async () => [],
+    fetchTicketReplies: async () => ({ items: [], page: 1, page_size: 25, total: 0 }),
+    updateTicket: async () => { throw new Error('No se pudo guardar la prioridad'); },
+    createReply: async () => { throw new Error('No se pudo guardar el mensaje'); },
+  } }, { ticketId: 'uuid', onTicketUpdated() {} });
+  await detail.settle();
+  detail.find(node => node.type === 'select' && node.props.value === 'medium').props.onChange({ target: { value: 'high' } });
+  detail.find(node => node.type === 'button' && node.props.children === 'Guardar cambios').props.onClick();
+  await new Promise(setImmediate);
+  assert.match(detail.html(), /No se pudo guardar la prioridad/);
+  assert.equal(detail.find(node => node.type === 'select' && node.props.value === 'high').props.value, 'high');
+  detail.find(node => node.type === 'textarea').props.onChange({ target: { value: 'Respuesta que debe conservarse' } });
+  detail.find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  await new Promise(setImmediate);
+  assert.match(detail.html(), /No se pudo guardar el mensaje/);
+  assert.equal(detail.find(node => node.type === 'textarea').props.value, 'Respuesta que debe conservarse');
 });
 
 test('ticket cerrado conserva lectura y oculta el formulario de mensajes', async () => {

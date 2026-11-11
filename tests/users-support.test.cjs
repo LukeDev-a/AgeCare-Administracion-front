@@ -65,8 +65,7 @@ function find(node, predicate) {
   return predicate(node) ? node : find(node.props?.children, predicate);
 }
 function section(tree, title) {
-  return find(tree, node => node.type === 'section' && !!find(node.props.children,
-    child => child.type === 'div' && child.props.className === 'card-title' && child.props.children === title));
+  return find(tree, node => node.type === 'section' && node.props['aria-label'] === title);
 }
 function harness(overrides = {}) {
   const state = [], calls = { roles: [], weekly: [], categories: [], support: 0, recent: 0 };
@@ -199,4 +198,25 @@ test('API anterior sin rangos conserva consulta y avisa de fechas ausentes', asy
   const html = renderToStaticMarkup(section(h.render(), 'Usuarios activos semanales por perfil'));
   assert.match(html, /Fechas de las semanas no disponibles/);
   assert.doesNotMatch(html, /Período mostrado:|Semana en curso · datos parciales/);
+});
+
+test('navegar entre actividad y soporte conserva filtros y datos sin nuevas consultas', async () => {
+  const h = harness(); h.render(); await h.flush();
+  let tree = h.render();
+  assert.equal(find(tree, node => node.props?.id === 'users-activity').props.hidden, false);
+  assert.equal(find(tree, node => node.props?.id === 'users-support').props.hidden, true);
+  find(section(tree, 'Actividad por perfil'), node => node.type === 'select').props.onChange({ target: { value: '90' } });
+  h.render(); await h.flush(); tree = h.render();
+  find(tree, node => node.type === 'button' && node.props['aria-controls'] === 'users-support').props.onClick();
+  tree = h.render(); await h.flush();
+  assert.equal(find(tree, node => node.props?.id === 'users-support').props.hidden, false);
+  assert.equal(find(tree, node => node.props?.id === 'users-activity').props.hidden, true);
+  find(tree, node => node.type === 'button' && node.props['aria-controls'] === 'users-activity').props.onClick();
+  tree = h.render(); await h.flush();
+  assert.equal(find(section(tree, 'Actividad por perfil'), node => node.type === 'select').props.value, 90);
+  assert.deepEqual(h.calls.roles, [30, 90]);
+  assert.deepEqual(h.calls.weekly, [8]);
+  assert.equal(h.calls.support, 1);
+  assert.equal(h.calls.recent, 1);
+  assert.match(renderToStaticMarkup(tree), /Última actualización de los indicadores/);
 });

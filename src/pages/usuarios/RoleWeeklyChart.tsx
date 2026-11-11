@@ -23,9 +23,11 @@ export function RoleWeeklyChart({ weekly }: { weekly: RolesWeekly }) {
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 16 }}>
         <CartesianGrid stroke="var(--line)" vertical={false} />
-        <XAxis dataKey="week" minTickGap={30} height={55} tick={{ fontSize: 10, fill: 'var(--ink-faint)' }} axisLine={{ stroke: 'var(--line-strong)' }} tickLine={false} />
-        <YAxis tick={{ fontSize: 11, fill: 'var(--ink-faint)' }} axisLine={false} tickLine={false} width={40} />
+        <XAxis dataKey="week" minTickGap={40} height={65} tick={{ fontSize: 13, fill: 'var(--ink-soft)' }} axisLine={{ stroke: 'var(--line-strong)' }} tickLine={false} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 13, fill: 'var(--ink-soft)' }} axisLine={false} tickLine={false} width={55} />
         <Tooltip labelFormatter={(label, payload) => payload?.[0]?.payload?.range ?? label}
+          contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--line)', borderRadius: 12, lineHeight: 1.8 }}
+          labelStyle={{ color: 'var(--ink)', fontWeight: 600 }}
           formatter={(value) => Number(value).toLocaleString('es-CL')} />
         {weekly.series.map(series => (
           <Line
@@ -33,7 +35,7 @@ export function RoleWeeklyChart({ weekly }: { weekly: RolesWeekly }) {
             type="monotone"
             dataKey={ROLE_META[series.role]?.name ?? series.role}
             stroke={ROLE_META[series.role]?.color ?? 'var(--ink)'}
-            strokeWidth={2}
+            strokeWidth={3}
             dot={false}
           />
         ))}
