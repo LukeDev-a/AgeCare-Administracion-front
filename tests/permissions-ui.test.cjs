@@ -7,6 +7,7 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 let user, pathname;
 let isAuthenticated = true;
+let logout = () => {};
 function load(path, dependencies = {}) {
   const context = { exports: {}, require: name => dependencies[name] ?? require(name) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
@@ -16,7 +17,7 @@ function load(path, dependencies = {}) {
 }
 const permissions = load('src/routes/permissions.ts');
 const dependencies = {
-  '../auth/AuthContext': { useAuth: () => ({ user, isAuthenticated, isRestoring: false, logout: () => {} }) },
+  '../auth/AuthContext': { useAuth: () => ({ user, isAuthenticated, isRestoring: false, logout }) },
   '../routes/permissions': permissions,
   'react-router-dom': {
     useLocation: () => ({ pathname }),
@@ -33,6 +34,32 @@ const roles = {
   editor: ['games', 'content', 'marketplace'],
   moderator: ['games', 'marketplace', 'moderation'],
 };
+
+test('Cerrar sesión ejecuta el cierre desde el botón y la ruta protegida vuelve al login', () => {
+  user = { role: 'admin', full_name: 'Prueba', permissions: ['games'] };
+  let calls = 0;
+  logout = async () => { calls++; isAuthenticated = false; user = null; };
+  function findButton(element) {
+    if (!element || typeof element !== 'object') return null;
+    if (element.type === 'button' && element.props.children === 'Cerrar sesión') return element;
+    for (const child of React.Children.toArray(element.props?.children)) {
+      const found = findButton(child);
+      if (found) return found;
+    }
+    return null;
+  }
+  try {
+    const button = findButton(Sidebar());
+    assert.ok(button, 'botón visible');
+    button.props.onClick();
+    assert.equal(calls, 1);
+    assert.ok(renderToStaticMarkup(React.createElement(ProtectedRoute, null, 'PRIVADO'))
+      .includes('data-redirect="/login"'));
+  } finally {
+    logout = () => {};
+    isAuthenticated = true;
+  }
+});
 
 test('RF03: tras expirar la sesión una ruta protegida dirige al login y no muestra su contenido', () => {
   isAuthenticated = false;

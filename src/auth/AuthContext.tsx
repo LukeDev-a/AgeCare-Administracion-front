@@ -102,9 +102,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await logoutSession();
     } catch (error) {
       console.error('No se pudo notificar el cierre de sesión al servidor.', error);
-    } finally {
-      clearSession();
-      setUser(null);
     }
   }
 

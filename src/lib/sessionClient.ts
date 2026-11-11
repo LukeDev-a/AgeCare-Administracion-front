@@ -7,7 +7,8 @@ export function createSessionClient(
   onExpired: () => void,
   transport: typeof fetch = (...args) => fetch(...args),
 ) {
-  let pendingRefresh: Promise<string | null> | null = null;
+  type Tokens = { access_token: string; refresh_token: string };
+  let pendingRefresh: { token: string; promise: Promise<Tokens | null> } | null = null;
 
   function clear() {
     sessionStorage.removeItem(ACCESS_KEY);
@@ -21,56 +22,65 @@ export function createSessionClient(
     onToken(access);
   }
 
-  function refresh(): Promise<string | null> {
-    if (pendingRefresh) return pendingRefresh;
-    const previousRefresh = sessionStorage.getItem(REFRESH_KEY);
-    if (!previousRefresh) {
-      clear();
-      return Promise.resolve(null);
-    }
-    // Las consultas simultáneas comparten una única rotación del refresh token.
-    pendingRefresh = (async () => {
+  function rotate(token: string): Promise<Tokens | null> {
+    if (pendingRefresh?.token === token) return pendingRefresh.promise;
+    const promise = (async () => {
       const response = await transport(`${baseUrl}/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: previousRefresh }),
+        body: JSON.stringify({ refresh_token: token }),
+        signal: AbortSignal.timeout(10_000),
       });
-      // Un logout o un nuevo login invalida esta respuesta pendiente.
-      if (sessionStorage.getItem(REFRESH_KEY) !== previousRefresh) {
-        return sessionStorage.getItem(ACCESS_KEY);
-      }
-      if (response.status === 401 || response.status === 403) {
-        clear();
-        return null;
-      }
+      if (response.status === 401 || response.status === 403) return null;
       if (!response.ok) throw new Error("No se pudo renovar la sesión.");
       const data = await response.json();
-      if (sessionStorage.getItem(REFRESH_KEY) !== previousRefresh) {
-        return sessionStorage.getItem(ACCESS_KEY);
-      }
       if (typeof data.access_token !== "string" || typeof data.refresh_token !== "string") {
         throw new Error("Respuesta de renovación inválida.");
       }
-      save(data.access_token, data.refresh_token);
-      return data.access_token as string;
+      return data as Tokens;
     })().finally(() => {
-      pendingRefresh = null;
+      if (pendingRefresh?.promise === promise) pendingRefresh = null;
     });
-    return pendingRefresh;
+    pendingRefresh = { token, promise };
+    return promise;
+  }
+
+  async function refresh(): Promise<string | null> {
+    const previousRefresh = sessionStorage.getItem(REFRESH_KEY);
+    if (!previousRefresh) {
+      clear();
+      return null;
+    }
+    const data = await rotate(previousRefresh);
+    // Un logout o un nuevo login invalida esta respuesta pendiente.
+    if (sessionStorage.getItem(REFRESH_KEY) !== previousRefresh) {
+      return sessionStorage.getItem(ACCESS_KEY);
+    }
+    if (!data) {
+      clear();
+      return null;
+    }
+    save(data.access_token, data.refresh_token);
+    return data.access_token;
+  }
+
+  function isFresh(access: string | null): access is string {
+    if (!access) return false;
+    try {
+      const payload = JSON.parse(atob(access.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      if (typeof payload.exp === "number" && payload.exp * 1000 > Date.now() + 60_000) {
+        return true;
+      }
+    } catch {
+      // El servidor sigue siendo quien valida el JWT; aquí solo anticipamos su expiración.
+    }
+    return false;
   }
 
   async function ensureFresh() {
     const access = sessionStorage.getItem(ACCESS_KEY);
     if (!access) return sessionStorage.getItem(REFRESH_KEY) ? refresh() : null;
-    try {
-      const payload = JSON.parse(atob(access.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-      if (typeof payload.exp === "number" && payload.exp * 1000 > Date.now() + 60_000) {
-        return access;
-      }
-    } catch {
-      // El servidor sigue siendo quien valida el JWT; aquí solo anticipamos su expiración.
-    }
-    return refresh();
+    return isFresh(access) ? access : refresh();
   }
 
   async function request(path: string, options: RequestInit = {}) {
@@ -93,18 +103,23 @@ export function createSessionClient(
   }
 
   async function logout() {
-    try {
-      const access = await ensureFresh();
-      const refreshToken = sessionStorage.getItem(REFRESH_KEY);
-      if (access && refreshToken) {
+    const access = sessionStorage.getItem(ACCESS_KEY);
+    const refreshToken = sessionStorage.getItem(REFRESH_KEY);
+    const rotating = pendingRefresh?.token === refreshToken ? pendingRefresh.promise : null;
+    // Salir del navegador no depende de la disponibilidad del servidor.
+    clear();
+    if (refreshToken) {
+      const tokens = rotating ? await rotating : isFresh(access)
+        ? { access_token: access, refresh_token: refreshToken }
+        : await rotate(refreshToken);
+      if (tokens) {
         await transport(`${baseUrl}/auth/logout`, {
           method: "POST",
-          headers: { Authorization: `Bearer ${access}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ refresh_token: refreshToken }),
+          headers: { Authorization: `Bearer ${tokens.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh_token: tokens.refresh_token }),
+          signal: AbortSignal.timeout(10_000),
         });
       }
-    } finally {
-      clear();
     }
   }
 

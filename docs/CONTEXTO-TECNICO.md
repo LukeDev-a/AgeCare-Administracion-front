@@ -1,5 +1,13 @@
 # Mapa del frontend principal
 
+## Cierre de sesión — 10 de noviembre de 2026
+
+Corregido un bloqueo posible: logout esperaba refresh y respuesta del servidor antes de borrar credenciales. Ahora sessionClient captura las credenciales y elimina la sesión local inmediatamente; el evento de expiración limpia AuthContext y ProtectedRoute dirige al login. Después intenta revocar la sesión remota, compartiendo una rotación que ya esté en curso y usando sus tokens resultantes sin guardarlos de nuevo. Refresh y logout tienen límite de espera de 10 segundos por petición. Si no hay conexión, la salida local se conserva, aunque la revocación remota no puede confirmarse. AuthContext no vuelve a limpiar al finalizar: una respuesta tardía no debe borrar un nuevo login.
+
+Validación automatizada: 121 pruebas frontend aprobadas y build correcto. Se cubrieron botón real de Sidebar, redirección protegida, respuesta pendiente, error de red, refresh simultáneo y nuevo login durante logout. No se usaron cuentas ni bases reales ni se desplegaron cambios; revisión en navegador de la versión publicada pendiente de subir el frontend.
+
+El usuario también confirmó entrega y recuperación de contraseña correctas en la consola publicada tras activar ADMIN_MAIL_WORKER_ENABLED en Render. El flag habilita el procesamiento de la cola de correos; la confirmación sustituye el pendiente de entrega real indicado abajo.
+
 ## Recuperación de contraseña — 10 de noviembre de 2026
 
 Login enlaza a ruta pública /recuperar-contrasena. PasswordResetPage solicita correo o, si recibe token por fragmento, nueva contraseña y confirmación. Fragmento retirado mediante replaceState al montar, token solo en memoria y POST público no-store por accountAccess/publicFetch (participa del indicador global). Validación de coincidencia, límites8–128, guard contra envíos simultáneos y errores conservados en pantalla. Respuesta genérica de solicitud y pantalla final con vuelta al login/MFA habitual. Solo tras confirmar se limpia sesión del navegador. No login automático ni cambio de MFA. Auditoría incorpora filtros para solicitud y restablecimiento. Compilación y pruebas de servicios aprobadas. Revisión visual/entrega real pendientes del usuario. Backend requiere migración0014.

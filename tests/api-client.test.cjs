@@ -8,7 +8,7 @@ function setup() {
   const storage = new Map(), notifications = [];
   const transport = { send: async () => new Response('{}') };
   const globals = {
-    Headers, atob, Event, Date, setTimeout, clearTimeout,
+    Headers, AbortSignal, atob, Event, Date, setTimeout, clearTimeout,
     sessionStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
     window: { dispatchEvent: event => notifications.push(event.type) },
     fetch: (...args) => transport.send(...args),
