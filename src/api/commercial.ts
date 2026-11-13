@@ -37,6 +37,8 @@ export interface CommercialRegistrations extends CommercialMetadata {
 export interface CommercialPlan {
   name: string;
   plan_code: string;
+  billing_unit: 'account';
+  billing_period: 'month';
   users: number;
   share: number | null;
   price_clp: number | null;

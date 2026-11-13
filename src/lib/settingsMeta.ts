@@ -17,19 +17,28 @@ export function settingName(setting: SystemSetting): string {
 }
 const readableName = (key: string) => key.replace(/[_.-]+/g, ' ').replace(/^./, letter => letter.toUpperCase());
 const DESCRIPTIONS: Record<string, string> = {
-  plan_prices: 'Define el precio de cada plan en pesos chilenos.',
+  plan_prices: 'Define el precio mensual por cuenta de cada plan de pago, en pesos chilenos (CLP). El plan gratuito no se modifica aquí. Los cambios no modifican los precios ni los ingresos de registros históricos.',
+  feature_flags: 'Permite o impide nuevas recopilaciones de noticias y adaptaciones con Gemini. Los trabajos ya aceptados continúan. La edición manual, el audio y la publicación permanecen disponibles.',
+  system_texts: 'Publica un aviso general dentro de la consola. Se actualiza automáticamente, sin cerrar sesiones ni activar un modo de mantenimiento. No incluyas datos personales ni credenciales.',
   churn_definition: 'Define cuándo una cuenta se considera dada de baja para los indicadores: por cancelación o por días sin actividad.',
   'ops_thresholds.api_core': 'Define los límites de tiempo de respuesta y errores utilizados para evaluar el estado de la API principal.',
 };
 export const settingDescription = (setting: SystemSetting) => DESCRIPTIONS[setting.key] || setting.description;
 const FIELDS: Record<string, string> = {
-  gold: 'Dorado (CLP)', platinum: 'Platino (CLP)', provider: 'Proveedor (CLP)',
+  gold: 'Dorado · CLP por cuenta al mes', platinum: 'Platino · CLP por cuenta al mes', provider: 'Proveedor · CLP por cuenta al mes',
   p95_ms: 'Límite de tiempo de respuesta (milisegundos)', error_rate: 'Proporción máxima de errores',
   explicit_cancellation: 'Contar las cancelaciones como bajas', inactivity_days: 'Días sin actividad para considerar una baja',
   api_core: 'API principal',
+  news_collection_enabled: 'Permitir recopilación de noticias', news_adaptation_enabled: 'Permitir adaptación con Gemini',
+  notice_enabled: 'Mostrar aviso en la consola', notice_title: 'Título del aviso', notice_body: 'Mensaje del aviso',
 };
 export const fieldName = (key: string, schema: ValueSchema) => FIELDS[key] || schema.title || readableName(key);
 export const fieldHelp = (key: string) => ({
+  news_collection_enabled: 'Afecta a nuevas solicitudes manuales y a la recopilación diaria. Las noticias guardadas se conservan.',
+  news_adaptation_enabled: 'Afecta a nuevas adaptaciones manuales y automáticas. Los borradores y trabajos ya aceptados se conservan.',
+  notice_enabled: 'Si eliges Sí, debes completar el título y el mensaje. El aviso lo verán las cuentas autenticadas de la consola.',
+  notice_title: 'Hasta 120 caracteres. Usa un título breve y comprensible.',
+  notice_body: 'Hasta 1000 caracteres, en texto plano. No incluyas datos personales, contraseñas ni claves.',
   p95_ms: 'El 95 % de las respuestas debería completarse dentro de este tiempo. 1000 milisegundos equivalen a 1 segundo.',
   error_rate: 'Se expresa entre 0 y 1. Por ejemplo, 0,02 equivale al 2 % de las solicitudes.',
   explicit_cancellation: 'Si seleccionas Sí, las cuentas que cancelan se incluyen en el cálculo de bajas.',

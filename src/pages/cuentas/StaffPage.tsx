@@ -6,6 +6,7 @@ import { StaffTable } from './StaffTable';
 import { StaffForm } from './StaffForm';
 import { StaffDeleteDialog } from './StaffDeleteDialog';
 import { cancelInvitation, resendInvitation } from '../../api/accountAccess';
+import { MfaRecoveryPanel } from './MfaRecoveryPanel';
 
 const EMPTY: StaffFilters = { q: '', role: '', is_active: '', account_status: '' };
 export function StaffPage() {
@@ -83,5 +84,6 @@ export function StaffPage() {
     </div>
     {form && <StaffForm account={form.account} currentId={user?.id} onSave={save} onClose={() => setForm(null)} />}
     {deleting && <StaffDeleteDialog account={deleting} onConfirm={remove} onClose={() => setDeleting(null)} />}
+    <MfaRecoveryPanel mfaEnabled={!!user?.mfa_enabled} />
   </section>;
 }

@@ -31,7 +31,10 @@ export function SettingEditor({ setting, onSaved }: { setting: SystemSetting; on
     try {
       const result = await updateSetting(base.key, { value: parsed, version: base.version, change_note: note.trim() });
       setBase(result); setDraft(JSON.stringify(result.value, null, 2)); setNote(''); onSaved(result);
-      setMessage('Parámetro actualizado correctamente.');
+      if (base.key === 'system_texts') window.dispatchEvent(new Event('agecare-settings-changed'));
+      setMessage(base.key === 'plan_prices'
+        ? 'Precios mensuales por cuenta actualizados. Los registros históricos conservan sus valores anteriores.'
+        : 'Parámetro actualizado correctamente.');
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'No se pudo guardar el parámetro.');
       if (exception instanceof SettingsError) {

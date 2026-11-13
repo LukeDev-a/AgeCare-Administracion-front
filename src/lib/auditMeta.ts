@@ -34,6 +34,11 @@ AUDIT_ACTION_OPTIONS.push(
   ['staff.mfa_enable', 'Activó la verificación en dos pasos'],
   ['staff.mfa_disable', 'Desactivó la verificación en dos pasos'],
   ['staff.mfa_recovery', 'Renovó sus códigos de recuperación'],
+  ['auth.mfa_recovery_request', 'Solicitó recuperar el acceso MFA'],
+  ['auth.mfa_recovery_confirm', 'Confirmó por correo su solicitud MFA'],
+  ['auth.mfa_recovery_failed', 'Verificación de recuperación MFA rechazada'],
+  ['staff.mfa_recovery_approve', 'Aprobó el restablecimiento MFA'],
+  ['staff.mfa_recovery_reject', 'Rechazó el restablecimiento MFA'],
 );
 
 export const AUDIT_ENTITIES = [

@@ -16,7 +16,20 @@ export function NewsCandidates({ onDraft }: { onDraft: (id: string, title: strin
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [runtime, setRuntime] = useState<{ worker_enabled: boolean; gemini_ready: boolean } | null>(null);
+  const [runtime, setRuntime] = useState<{ worker_enabled: boolean; gemini_ready: boolean; collection_enabled?: boolean; adaptation_enabled?: boolean } | null>(null);
+  useEffect(() => {
+    let cancelled = false, inFlight = false;
+    async function refreshRuntime() {
+      if (inFlight) return;
+      inFlight = true;
+      try { const config = await fetchEditorialRuntime(); if (!cancelled) setRuntime(config); }
+      catch { if (!cancelled) setError('No se pudo consultar la disponibilidad de las funciones. Actualiza antes de continuar.'); }
+      finally { inFlight = false; }
+    }
+    const timer = window.setInterval(() => void refreshRuntime(), 60_000);
+    window.addEventListener('focus', refreshRuntime);
+    return () => { cancelled = true; window.clearInterval(timer); window.removeEventListener('focus', refreshRuntime); };
+  }, []);
   useEffect(() => {
     let cancelled = false;
     Promise.all([fetchCandidates(page), fetchEditorialJobs(), fetchEditorialRuntime()]).then(([data, executions, config]) => {
@@ -34,9 +47,11 @@ export function NewsCandidates({ onDraft }: { onDraft: (id: string, title: strin
   return <section className={`${ui.panel} tw:space-y-5`} aria-label="Noticias recopiladas"><div className="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-5"><div><h2 className={ui.heading}>Noticias recopiladas</h2>
     <p className={ui.description}>Hasta 20 candidatos por consulta. Todos se conservan; inicialmente se adaptan hasta 5. Revisión humana antes de publicar.</p></div>
     <div className={ui.actions}><button className={ui.button} disabled={busy} onClick={() => { setError(''); setRevision(value => value + 1); }}>Actualizar candidatos y trabajos</button>
-      <button className={`${ui.button} ${ui.primary}`} disabled={busy} onClick={() => void collect()}>Recopilar ahora</button></div></div>
+      <button className={`${ui.button} ${ui.primary}`} disabled={busy || runtime?.collection_enabled === false} onClick={() => void collect()}>Recopilar ahora</button></div></div>
     {notice && <p role="status" className={ui.notice}>{notice}</p>}{error && <p className={ui.error} role="alert">{error}</p>}
     {runtime && !runtime.worker_enabled && <p className={ui.notice}>El procesamiento automático está desactivado. Las solicitudes se conservan hasta que se active.</p>}
+    {runtime?.collection_enabled === false && <p className={ui.notice}>La recopilación de noticias está desactivada en Configuración. Puedes revisar las noticias que ya están guardadas.</p>}
+    {runtime?.adaptation_enabled === false && <p className={ui.notice}>Las nuevas adaptaciones con Gemini están desactivadas en Configuración. La edición manual sigue disponible.</p>}
     {runtime && !runtime.gemini_ready && <p className={ui.notice}>La adaptación con Gemini no está disponible. Puedes revisar las noticias y preparar borradores manualmente.</p>}
     <div className={ui.scroll}><table className={ui.table}><thead><tr><th>Noticia</th><th>Estado</th><th>Procedencia</th><th>Acción</th></tr></thead>
       <tbody>{items.map(item => <tr key={item.id} className={selected === item.id ? 'tw:bg-brand-soft' : ''}><td className="tw:min-w-64 tw:max-w-sm"><p className="tw:font-semibold tw:break-words">{item.title}</p><p className="tw:mt-2 tw:text-sm tw:text-muted">{item.source_date ? ticketDate(item.source_date) : 'Fecha no disponible'}</p></td>
@@ -47,14 +62,14 @@ export function NewsCandidates({ onDraft }: { onDraft: (id: string, title: strin
     <div className="tw:my-5 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4"><span>{total} candidatos · página {page}</span><div className={ui.actions}>
       <button className={ui.button} disabled={page <= 1} onClick={() => setPage(value => value - 1)}>Anterior</button>
       <button className={ui.button} disabled={page * 20 >= total} onClick={() => setPage(value => value + 1)}>Siguiente</button></div></div>
-    {current && <CandidateReview key={current.id} candidate={current} onClose={() => setSelected('')} onChanged={() => setRevision(value => value + 1)} onDraft={(id, title) => { setSelected(''); onDraft(id, title); }} />}
+    {current && <CandidateReview key={current.id} candidate={current} adaptationEnabled={runtime?.adaptation_enabled !== false} onClose={() => setSelected('')} onChanged={() => setRevision(value => value + 1)} onDraft={(id, title) => { setSelected(''); onDraft(id, title); }} />}
     <details className={ui.step}><summary className="tw:cursor-pointer tw:font-semibold">Trabajos y resultados recientes</summary><div className={`${ui.scroll} tw:mt-5`}><table className={ui.table}><thead><tr><th>Proceso</th><th>Estado</th><th>Resultado</th></tr></thead>
       <tbody>{jobs.map(job => <tr key={job.id}><td>{job.kind === 'collect' ? 'Recopilación' : job.kind === 'adapt' ? 'Adaptación' : 'Audio'} · {ticketDate(job.created_at)}</td>
         <td>{EDITORIAL_STATES[job.status] || job.status}</td><td>{job.error ? CONTENT_ERRORS[job.error] || 'El trabajo requiere revisión' : job.kind === 'collect' && job.result ? `${job.result.candidates ?? 0} nuevos · ${job.result.duplicates ?? 0} existentes · ${job.result.changed ?? 0} modificados` : job.status === 'done' ? (job.kind === 'adapt' ? 'Adaptación terminada. Abre Revisar en la noticia para ver la propuesta.' : 'Proceso terminado. Revisa el contenido correspondiente.') : 'Pendiente de procesamiento. Pulsa Actualizar candidatos y trabajos para consultar el avance.'}</td></tr>)}</tbody></table></div></details>
   </section>;
 }
 
-function CandidateReview({ candidate, onChanged, onDraft, onClose }: { candidate: NewsCandidate; onChanged: () => void; onDraft: (id: string, title: string) => void; onClose: () => void }) {
+function CandidateReview({ candidate, onChanged, onDraft, onClose, adaptationEnabled = true }: { candidate: NewsCandidate; onChanged: () => void; onDraft: (id: string, title: string) => void; onClose: () => void; adaptationEnabled?: boolean }) {
   const [title, setTitle] = useState(candidate.adaptation?.title || candidate.title.slice(0, 160));
   const [body, setBody] = useState(candidate.adaptation?.body || candidate.original_text.slice(0, 4000));
   const [note, setNote] = useState('');
@@ -89,7 +104,8 @@ function CandidateReview({ candidate, onChanged, onDraft, onClose }: { candidate
     </section>
     <section className={ui.step}><h4 className={ui.heading}>2. Adaptar con Gemini</h4>
     <p>La adaptación se procesa en segundo plano. Después de solicitarla, pulsa «Actualizar candidatos y trabajos» arriba para ver el resultado.</p>
-    <button className={`${ui.button} ${ui.primary}`} disabled={busy || !!candidate.item_id || ['queued', 'waiting_quota', 'discarded'].includes(candidate.status)} onClick={() => void action(() => requestAdaptation(candidate.id), 'Adaptación en cola. Pulsa Actualizar candidatos y trabajos para ver el avance.')}>{candidate.status === 'queued' ? 'Adaptación en cola' : candidate.status === 'waiting_quota' ? 'Esperando cuota gratuita' : 'Adaptar con Gemini'}</button>
+    <button className={`${ui.button} ${ui.primary}`} disabled={busy || !adaptationEnabled || !!candidate.item_id || ['queued', 'waiting_quota', 'discarded'].includes(candidate.status)} onClick={() => void action(() => requestAdaptation(candidate.id), 'Adaptación en cola. Pulsa Actualizar candidatos y trabajos para ver el avance.')}>{candidate.status === 'queued' ? 'Adaptación en cola' : candidate.status === 'waiting_quota' ? 'Esperando cuota gratuita' : 'Adaptar con Gemini'}</button>
+    {!adaptationEnabled && <p className={ui.notice}>Las nuevas adaptaciones están desactivadas. Puedes trabajar manualmente con el texto.</p>}
     {candidate.adaptation && <details open className="tw:space-y-4 tw:rounded-xl tw:border tw:border-solid tw:border-brand tw:bg-canvas tw:p-5"><summary className="tw:cursor-pointer tw:font-semibold">Propuesta de Gemini disponible</summary><h5 className="tw:text-lg tw:font-bold">{candidate.adaptation.title}</h5><p>{candidate.adaptation.classification}</p><p>{candidate.adaptation.changes}</p>
       <p className="tw:max-w-3xl tw:leading-8 tw:whitespace-pre-wrap tw:break-words">{candidate.adaptation.body}</p>{candidate.adaptation.unsuitable && <p className={ui.error}>Gemini señala posibles motivos de descarte. Revisa antes de continuar.</p>}
       <button className={ui.button} disabled={busy} onClick={() => { setTitle(candidate.adaptation!.title); setBody(candidate.adaptation!.body); setNotice('Propuesta copiada al paso 3. Revisa el título y el texto y pulsa Guardar como borrador. Todavía no se ha guardado ni publicado.'); }}>Usar esta propuesta en el formulario</button></details>}

@@ -69,7 +69,7 @@ test('planes preservan un precio de cero y distinguen ausencia', () => {
   assert.equal(moneyOrDash(null), '—');
 });
 
-test('pantalla muestra ambas conversiones y separa descargas, sin inventar unidad facturable', async () => {
+test('pantalla muestra conversiones, descargas separadas y cobro mensual por cuenta', async () => {
   const states = [], effects = [];
   let cursor = 0;
   const metadata = { data_origin: 'demo', computed_at: null, freshness: null };
@@ -111,5 +111,7 @@ test('pantalla muestra ambas conversiones y separa descargas, sin inventar unida
   assert.match(html, /Período de consulta/);
   assert.match(html, /Usuarios e ingresos al cierre disponible/);
   assert.doesNotMatch(html, /Origen de datos|Fuente indicadores diarios|Datos de demostración/);
-  assert.match(html, /unidad facturable de los planes está pendiente/);
+  assert.match(html, /cobro mensual por cuenta/);
+  assert.match(html, /Precio mensual por cuenta/);
+  assert.match(html, /no alteran este historial/);
 });

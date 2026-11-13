@@ -129,14 +129,14 @@ export function ComercialPage() {
         <PlanMixChart plans={plans.plans} />
         <div className={tableScroll}><table className={tableStyle}>
           <caption className="tw:sr-only">Distribución de planes e ingresos mensuales en pesos chilenos</caption>
-          <thead><tr><th>Plan</th><th>Cantidad registrada</th><th>Participación</th><th>Precio del plan</th><th>Ingreso mensual</th><th>Bajas mensuales</th></tr></thead>
+          <thead><tr><th>Plan</th><th>Cuentas</th><th>Participación</th><th>Precio mensual por cuenta</th><th>Ingreso mensual</th><th>Bajas mensuales</th></tr></thead>
           <tbody>{plans.plans.map(plan => <tr key={plan.plan_code}>
             <td className="tw:font-semibold">{plan.name}</td><td>{fmt(plan.users)}</td><td>{rate(plan.share)}</td>
             <td>{moneyOrDash(plan.price_clp)}</td><td>{moneyOrDash(plan.mrr_clp)}</td><td>{percent(plan.monthly_churn)}</td>
           </tr>)}</tbody>
           <tfoot><tr><td>Total</td><td>{fmt(plans.totals.users)}</td><td>{plans.totals.users ? '100%' : 'Sin datos'}</td><td>—</td><td>{money(plans.totals.mrr_clp)}</td><td>{rate(plans.totals.monthly_churn)}</td></tr></tfoot>
         </table></div>
-        <p className="tw:mt-4 tw:text-muted">Importes en pesos chilenos (CLP). La unidad facturable de los planes está pendiente de definición.</p>
+        <p className="tw:mt-4 tw:text-muted">Importes en pesos chilenos (CLP), con cobro mensual por cuenta. Los precios corresponden a la fecha del registro; los cambios realizados en Configuración no alteran este historial.</p>
         <AnalyticsMetadata value={plans} />
       </> : !plansState.error && <p role="status" className={loadingStyle}>Cargando planes e ingresos…</p>}
     </section>

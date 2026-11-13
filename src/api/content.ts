@@ -104,7 +104,7 @@ async function editorialRequest<T>(path: string, body?: object): Promise<T> {
 }
 export const fetchCandidates = (page: number) => editorialRequest<{ items: NewsCandidate[]; total: number }>(`candidates?page=${page}`);
 export const fetchEditorialJobs = () => editorialRequest<{ items: EditorialJob[] }>('jobs');
-export const fetchEditorialRuntime = () => editorialRequest<{ worker_enabled: boolean; gemini_ready: boolean }>('runtime');
+export const fetchEditorialRuntime = () => editorialRequest<{ worker_enabled: boolean; gemini_ready: boolean; collection_enabled?: boolean; adaptation_enabled?: boolean }>('runtime');
 export const requestCollection = () => editorialRequest('collect', {});
 export const requestAdaptation = (id: string) => editorialRequest(`candidates/${id}/adapt`, {});
 export const reviewCandidate = (id: string, action: string, note: string, source_hash: string) => editorialRequest(`candidates/${id}/review`, { action, note, source_hash });

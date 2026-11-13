@@ -83,6 +83,7 @@ export function LoginPage() {
             <span className="login-submit-label">{isSubmitting ? 'Verificando...' : 'Iniciar sesión'}</span>
           </button>
           <Link to="/recuperar-contrasena" className="tw:py-2 tw:text-center tw:text-sm tw:font-semibold tw:text-brand-ink">¿Olvidaste tu contraseña?</Link>
+          <Link to="/recuperar-mfa" className="tw:py-2 tw:text-center tw:text-sm tw:font-semibold tw:text-brand-ink">Perdí mi autenticador y mis códigos de recuperación</Link>
           <div className="login-help">Usa las credenciales de una cuenta de staff autorizada.</div>
         </form>
       </div>
