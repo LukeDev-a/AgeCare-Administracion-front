@@ -96,6 +96,23 @@ test('las pestañas conservan filtros y el borrador abre la gestión del conteni
   assert.equal(calls.at(-1).search, 'Noticia adaptada');
 });
 
+test('el aviso de preparación solo aparece tras aprobar y se oculta al editar el texto', () => {
+  const item = { id: 'draft', title: 'Noticia editorial', body: 'Texto original por revisar', tags: [], type: 'news', status: 'draft',
+    text_version: 2, approved_version: null, publish_at: null, updated_at: '2026-11-11', audio_available: false, audio_status: 'queued', provenance: null };
+  const setup = item => mount('src/pages/contenido/ContentDetail.tsx', 'ContentDetail', {
+    '../../api/content': {}, '../../auth/AuthContext': { useAuth: () => ({ user: { role: 'editor' } }) },
+    '../../lib/contentMeta': load('src/lib/contentMeta.ts'), '../../lib/format': { ticketDate: String },
+  }, { item, onChanged() {}, onDeleted() {} });
+  const pending = setup(item);
+  assert.doesNotMatch(pending.html(), /Estamos preparando el audio/);
+  assert.match(pending.html(), /El texto está pendiente de aprobación/);
+  const approved = setup({ ...item, approved_version: 2 });
+  assert.match(approved.html(), /Estamos preparando el audio/);
+  approved.find(n => n.type === 'textarea').props.onChange({ target: { value: 'Texto modificado que necesita aprobación' } });
+  assert.doesNotMatch(approved.html(), /Estamos preparando el audio/);
+  assert.match(approved.html(), /Guarda los cambios y después aprueba/);
+});
+
 test('el fallo al guardar conserva el texto y muestra el error sin habilitar la publicación', async () => {
   const item = { id: 'draft', title: 'Noticia editorial', body: 'Texto original por revisar', tags: [], type: 'news', status: 'draft',
     text_version: 1, approved_version: null, publish_at: null, updated_at: '2026-11-11', audio_available: false, audio_status: 'pending', provenance: null };
@@ -209,7 +226,7 @@ test('una noticia archivada no permite programar fecha, pero guarda etiquetas si
 test('publicar ahora confirma que se elimina la programación, cancelar no envía y un fallo conserva confirmación', async () => {
   const item = { id: 'scheduled', title: 'Noticia programada', body: 'Texto editorial aprobado', tags: [], type: 'news', status: 'draft',
     text_version: 1, approved_version: 1, publish_at: '2026-12-12T18:30:00Z', updated_at: '2026-11-11', audio_available: true, audio_status: 'ready', provenance: null };
-  let attempts = 0, changed = 0;
+  let attempts = 0, changed = 0, closed = 0;
   const h = mount('src/pages/contenido/ContentDetail.tsx', 'ContentDetail', {
     '../../api/content': { changeContentPublication: async (id, unpublish) => {
       assert.equal(id, item.id); assert.equal(unpublish, false);
@@ -217,7 +234,7 @@ test('publicar ahora confirma que se elimina la programación, cancelar no enví
     } },
     '../../auth/AuthContext': { useAuth: () => ({ user: { role: 'editor' } }) },
     '../../lib/contentMeta': load('src/lib/contentMeta.ts'), '../../lib/format': { ticketDate: String },
-  }, { item, onChanged() { changed++; }, onDeleted() {} });
+  }, { item, onChanged() { changed++; }, onDeleted() {}, onClose() { closed++; } });
   const click = label => h.find(n => n.type === 'button' && n.props.children === label).props.onClick();
   click('Publicar ahora');
   assert.equal(attempts, 0);
@@ -225,6 +242,7 @@ test('publicar ahora confirma que se elimina la programación, cancelar no enví
   assert.match(h.html(), /se eliminará esa programación/);
   click('Volver y conservar programación');
   assert.equal(attempts, 0);
+  assert.equal(closed, 0);
   assert.equal(item.publish_at, '2026-12-12T18:30:00Z');
   click('Publicar ahora');
   click('Confirmar y publicar ahora');
@@ -232,10 +250,12 @@ test('publicar ahora confirma que se elimina la programación, cancelar no enví
   await new Promise(setImmediate);
   assert.match(h.html(), /No fue posible publicar/);
   assert.equal(changed, 0);
+  assert.equal(closed, 0);
   click('Confirmar y publicar ahora');
   await new Promise(setImmediate);
   assert.equal(attempts, 2);
   assert.equal(changed, 1);
+  assert.equal(closed, 1, 'publicar correctamente vuelve al listado; cancelar o fallar conserva el modal');
 });
 
 test('eliminar exige confirmación interna, cancelar conserva edición y un fallo permite reintentar', async () => {

@@ -35,6 +35,8 @@ export function ContentDetail({ item, onChanged, onDeleted, onEditingChange, onC
   const draftDirty = title !== savedValues.title || body !== savedValues.body || normalizedTags(tags) !== savedValues.tags;
   const scheduleDirty = normalizedSchedule(scheduled) !== normalizedSchedule(savedValues.scheduled);
   const dirty = draftDirty || scheduleDirty;
+  const textDirty = title !== savedValues.title || body !== savedValues.body;
+  const textApproved = !textDirty && item.approved_version === item.text_version;
   const scheduleReason = item.status !== 'draft' ? 'Solo los borradores admiten una publicación programada.'
     : draftDirty ? 'Guarda primero los cambios del texto y las etiquetas.'
       : item.approved_version !== item.text_version ? 'Falta aprobar la versión actual del texto.'
@@ -99,6 +101,7 @@ export function ContentDetail({ item, onChanged, onDeleted, onEditingChange, onC
       setConfirmPublish(false);
       setNotice(item.status === 'published' ? 'Contenido retirado.' : 'Contenido publicado.');
       onChanged();
+      if (item.status !== 'published') onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No fue posible cambiar el estado.');
     } finally {
@@ -153,8 +156,8 @@ export function ContentDetail({ item, onChanged, onDeleted, onEditingChange, onC
         <span className={`chip ${status.className} tw:px-3 tw:py-1.5 tw:text-sm`}>{status.label}</span>
       </div>
       <dl className="tw:grid tw:gap-4 tw:md:grid-cols-3">
-        <div className="tw:rounded-xl tw:bg-canvas tw:p-5"><dt className="tw:text-sm tw:text-muted">Texto editorial</dt><dd className="tw:mt-2 tw:font-bold">{item.approved_version === item.text_version ? 'Versión aprobada' : 'Pendiente de aprobación'}</dd></div>
-        <div className="tw:rounded-xl tw:bg-canvas tw:p-5"><dt className="tw:text-sm tw:text-muted">Audio de esta versión</dt><dd className="tw:mt-2 tw:font-bold">{item.audio_available ? 'Disponible para escuchar' : item.audio_status === 'ready' ? 'Audio no disponible' : AUDIO_STATES[item.audio_status] || 'Pendiente'}</dd></div>
+        <div className="tw:rounded-xl tw:bg-canvas tw:p-5"><dt className="tw:text-sm tw:text-muted">Texto editorial</dt><dd className="tw:mt-2 tw:font-bold">{textApproved ? 'Versión aprobada' : 'Pendiente de aprobación'}</dd></div>
+        <div className="tw:rounded-xl tw:bg-canvas tw:p-5"><dt className="tw:text-sm tw:text-muted">Audio de esta versión</dt><dd className="tw:mt-2 tw:font-bold">{!textApproved ? 'Pendiente de aprobación del texto' : item.audio_available ? 'Disponible para escuchar' : item.audio_status === 'ready' ? 'Audio no disponible' : AUDIO_STATES[item.audio_status] || 'Pendiente'}</dd></div>
         <div className="tw:rounded-xl tw:bg-canvas tw:p-5"><dt className="tw:text-sm tw:text-muted">Publicación</dt><dd className="tw:mt-2 tw:font-bold">{status.label}</dd><dd className="tw:mt-2 tw:text-sm tw:text-muted">{item.publish_at ? `Programada: ${ticketDate(item.publish_at)}` : 'Sin fecha programada'}</dd></div>
       </dl>
       <form className={ui.form} onSubmit={event => void handleSave(event)}>
@@ -182,21 +185,22 @@ export function ContentDetail({ item, onChanged, onDeleted, onEditingChange, onC
         </div>
         <div className={`${ui.step} tw:col-span-full`}><h3 className={ui.heading}>2. Aprobar el texto y preparar el audio</h3>
           <p className={ui.description}>La aprobación solicita el audio de esta versión. Cuando esté disponible, escúchalo antes de publicar.</p>
-          {item.audio_status === 'queued' && <p role="status" className={ui.notice}><span aria-hidden="true" className="tw:mr-3 tw:inline-block tw:size-4 tw:animate-spin tw:rounded-full tw:border-2 tw:border-solid tw:border-stroke tw:border-t-brand" />Estamos preparando el audio. El estado se actualiza automáticamente; no necesitas guardar de nuevo.{dirty ? ' La actualización automática está pausada mientras tengas cambios sin guardar.' : ''}</p>}
-          {item.audio_status === 'waiting_quota' && <p role="status" className={ui.notice}>El audio está esperando disponibilidad de la cuota gratuita. La solicitud se conserva; no necesitas aprobar el texto otra vez. Pulsa «Actualizar contenido» más adelante para consultar el avance.</p>}
-          {item.audio_available && <p role="status" className={ui.notice}>Audio listo. Pulsa «Escuchar audio vigente» para revisarlo y después continúa con la publicación.</p>}
+          {!textApproved && <p role="status" className={ui.notice}>{textDirty ? 'Guarda los cambios y después aprueba la nueva versión del texto para solicitar su audio.' : 'El texto está pendiente de aprobación. Pulsa «Aprobar texto y generar audio» para iniciar la preparación del audio de esta versión.'}</p>}
+          {textApproved && item.audio_status === 'queued' && <p role="status" className={ui.notice}><span aria-hidden="true" className="tw:mr-3 tw:inline-block tw:size-4 tw:animate-spin tw:rounded-full tw:border-2 tw:border-solid tw:border-stroke tw:border-t-brand" />Estamos preparando el audio. El estado se actualiza automáticamente; no necesitas guardar de nuevo.{dirty ? ' La actualización automática está pausada mientras tengas cambios sin guardar.' : ''}</p>}
+          {textApproved && item.audio_status === 'waiting_quota' && <p role="status" className={ui.notice}>El audio está esperando disponibilidad de la cuota gratuita. La solicitud se conserva; no necesitas aprobar el texto otra vez. Pulsa «Actualizar contenido» más adelante para consultar el avance.</p>}
+          {textApproved && item.audio_available && <p role="status" className={ui.notice}>Audio listo. Pulsa «Escuchar audio vigente» para revisarlo y después continúa con la publicación.</p>}
           <div className={ui.actions}><button className={ui.button} type="button" disabled={busy || dirty || item.approved_version === item.text_version} onClick={async () => {
             setIsSaving(true); setError(''); try { await contentAction(item.id, 'approve', item.text_version); onChanged(); } catch (exception) { setError(exception instanceof Error ? exception.message : 'No se pudo aprobar.'); } finally { setIsSaving(false); }
-          }}>{isSaving ? 'Procesando…' : item.approved_version === item.text_version ? 'Texto aprobado' : 'Aprobar texto y generar audio'}</button>
+          }}>{isSaving ? 'Procesando…' : textApproved ? 'Texto aprobado' : 'Aprobar texto y generar audio'}</button>
           <button className={ui.button} type="button" disabled={busy || dirty || item.approved_version !== item.text_version || ['queued', 'waiting_quota'].includes(item.audio_status)} onClick={async () => {
             setIsSaving(true); setError(''); try { await contentAction(item.id, 'audio/retry'); onChanged(); } catch (exception) { setError(exception instanceof Error ? exception.message : 'No se pudo solicitar audio.'); } finally { setIsSaving(false); }
           }}>Reintentar audio</button>
-          {item.audio_available && <button className={ui.button} type="button" onClick={async () => {
+          {textApproved && item.audio_available && <button className={ui.button} type="button" onClick={async () => {
             try { setAudio(URL.createObjectURL(await fetchContentAudio(item.id))); } catch (exception) { setError(exception instanceof Error ? exception.message : 'Audio no disponible.'); }
           }}>Escuchar audio vigente</button>}</div>
           {draftDirty && <p className={ui.notice}>Guarda los cambios del formulario antes de continuar con la aprobación o publicación.</p>}
-          {item.audio_error && <p className={ui.error}>{CONTENT_ERRORS[item.audio_error] || 'El audio requiere revisión'}. El contenido se conserva.</p>}
-          {audio && <audio className="tw:w-full" controls src={audio} />}
+          {textApproved && item.audio_error && <p className={ui.error}>{CONTENT_ERRORS[item.audio_error] || 'El audio requiere revisión'}. El contenido se conserva.</p>}
+          {textApproved && audio && <audio className="tw:w-full" controls src={audio} />}
         </div>
         <div className={`${ui.step} tw:col-span-full`}><h3 className={ui.heading}>3. Publicar o programar</h3>
           {item.status === 'draft' ? <div className="tw:space-y-4">

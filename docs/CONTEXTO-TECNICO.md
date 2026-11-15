@@ -1,6 +1,12 @@
 # Mapa del frontend principal
 
+## Mensaje de audio después de editar — 15 de noviembre de 2026
+
+ContentDetail prioriza aprobación de texto frente al estado de cola: no muestra preparación, cuota, audio listo ni reproductor de una versión anterior mientras título/cuerpo tengan cambios o la versión guardada no esté aprobada. Indica guardar y aprobar, o aprobar si ya se guardó. No confunde cambios de etiquetas con invalidación del texto. Protege también respuestas legadas queued sin aprobación. Backend PATCH deja audio pending tras invalidar en lugar de encolarlo antes de aprobar; el POST approve conserva la solicitud TTS.16 pruebas frontend dirigidas,12 backend en SQLite en memoria con proveedores simulados, build y lint aprobados. Sin consumo Gemini, cambios de bases reales ni despliegues. Usuario debe publicar frontend y backend para aplicar ambos ajustes.
+
 ## Confirmación de publicación inmediata — 15 de noviembre de 2026
+
+Al publicar correctamente, ContentDetail solicita refrescar el catálogo y cierra el modal para volver al listado con sus filtros actuales. Cancelar o fallar conserva la ventana; guardar, aprobar, programar y retirar mantienen su flujo anterior. Regresión comprueba que onClose solo ocurre tras publicación correcta. No se publicaron contenidos reales.
 
 ContentDetail cambia Publicar por Publicar ahora y exige confirmación dentro del Modal antes del POST. Si existe publish_at, muestra su fecha y advierte que publicar inmediatamente elimina la programación (comportamiento existente de content_editorial.publish). Volver conserva la programación sin solicitudes; error permite reintentar y busy bloquea cierre. Retirar mantiene su acción existente. Sin cambios backend, migraciones ni publicaciones reales. Pruebas de contenido/modal:15 aprobadas, incluida cancelación y fallo/reintento. Revisión visual habitual pendiente.
 
