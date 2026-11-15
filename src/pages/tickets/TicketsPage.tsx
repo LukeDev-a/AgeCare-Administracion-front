@@ -77,7 +77,7 @@ export function TicketsPage() {
             <h1 className="tw:text-2xl tw:font-bold tw:sm:text-3xl">Tickets de soporte</h1>
             <p className={ui.description}>Consulta las solicitudes, organiza su atención y mantén el seguimiento de cada caso.</p>
           </div>
-          {canManage && <button className={`${ui.button} ${ui.primary}`} type="button" aria-expanded={showNewForm} onClick={() => setShowNewForm(value => !value)}>
+          {canManage && <button className={`${ui.button} ${ui.primary}`} type="button" aria-haspopup="dialog" onClick={() => setShowNewForm(true)}>
             Crear ticket
           </button>}
         </header>

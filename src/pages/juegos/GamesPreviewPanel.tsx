@@ -1,207 +1,59 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useState } from 'react';
 import { toggleGameAppStatus, type GameAppItem } from '../../api/gamesApps';
+import { GAME_TIER_LABELS } from '../../lib/gamesMeta';
+import { gameStyles as s } from './gameStyles';
 
-interface GamesPreviewPanelProps {
-  canManage: boolean;
-  items: GameAppItem[];
-  onChanged: () => void;
-}
+interface GamesPreviewPanelProps { canManage: boolean; items: GameAppItem[]; onChanged: () => void; }
 
 export function GamesPreviewPanel({ items, canManage, onChanged }: GamesPreviewPanelProps) {
-  const activos = useMemo(() => items.filter(item => item.is_active), [items]);
-  const [selectedId, setSelectedId] = useState<string | null>(activos[0]?.id ?? null);
-  const [previewFailed, setPreviewFailed] = useState(false);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() => items.find(item => item.is_active)?.id ?? items[0]?.id ?? null);
+  const [toggling, setToggling] = useState(false);
+  const [error, setError] = useState('');
+  const [loadedKey, setLoadedKey] = useState('');
+  const [failedKey, setFailedKey] = useState('');
+  const [retry, setRetry] = useState(0);
+  const selected = items.find(item => item.id === selectedId) ?? items.find(item => item.is_active) ?? items[0];
+  const frameKey = `${selected?.id}:${selected?.target_url}:${retry}`;
 
-  useEffect(() => {
-    if (activos.length === 0) {
-      setSelectedId(null);
-      return;
-    }
-    if (!activos.find(item => item.id === selectedId)) {
-      setSelectedId(activos[0].id);
-      setPreviewFailed(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activos]);
-
-  useEffect(() => {
-    if (menuOpenId === null) return;
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setMenuOpenId(null);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMenuOpenId(null);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [menuOpenId]);
-
-  async function handleSetStatus(item: GameAppItem, activar: boolean) {
-    if (!canManage) return;
-    if (item.is_active === activar) {
-      setMenuOpenId(null);
-      return;
-    }
-    setTogglingId(item.id);
-    try {
-      await toggleGameAppStatus(item.id);
-      onChanged();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'No fue posible cambiar el estado.');
-    } finally {
-      setTogglingId(null);
-      setMenuOpenId(null);
-    }
+  async function handleToggle(item: GameAppItem) {
+    if (!canManage || toggling) return;
+    setToggling(true); setError('');
+    try { await toggleGameAppStatus(item.id); onChanged(); }
+    catch (err) { setError(err instanceof Error ? err.message : 'No fue posible cambiar el estado.'); }
+    finally { setToggling(false); }
   }
 
-  const selected = activos.find(item => item.id === selectedId) ?? null;
+  if (!selected) return <section className={`${s.panel} tw:py-14 tw:text-center`}><h3 className="tw:text-lg tw:font-semibold">No hay juegos para mostrar</h3><p className={`tw:mt-2 ${s.muted}`}>Cambia los filtros para encontrar un juego.</p></section>;
 
-  if (items.length === 0) {
-    return (
-      <div className="card">
-        <div className="placeholder-box" style={{ padding: 35 }}>No hay juegos ni aplicaciones disponibles.</div>
+  return <div className="tw:grid tw:items-start tw:gap-5 tw:xl:grid-cols-[280px_minmax(0,1fr)]">
+    <aside className={s.panel} aria-label="Elegir juego para vista previa">
+      <h3 className="tw:text-lg tw:font-bold">Elige un juego</h3>
+      <p className={`tw:mt-2 tw:mb-4 ${s.muted}`}>Los activos se pueden probar aquí. Cambiar de juego reinicia la vista previa.</p>
+      <div className="tw:grid tw:max-h-[560px] tw:gap-2 tw:overflow-y-auto tw:pr-1">
+        {items.map(item => <button key={item.id} type="button" aria-pressed={selected.id === item.id} disabled={toggling} className={`${s.button} tw:w-full tw:text-left ${selected.id === item.id ? s.primary : ''}`} onClick={() => { setSelectedId(item.id); setLoadedKey(''); setFailedKey(''); setError(''); setRetry(value => value + 1); }}>
+          <span className="tw:block tw:font-semibold">{item.item_type === 'game' ? '🎮' : '📱'} {item.title}</span>
+          <span className={`tw:mt-1 tw:block tw:text-xs ${item.is_active ? 'tw:text-positive' : 'tw:text-muted'}`}>{item.is_active ? '● Activo' : '○ Inactivo'} · {item.category}</span>
+        </button>)}
       </div>
-    );
-  }
-
-  return (
-    <div ref={containerRef}>
-      <div className="card">
-        <div className="card-head">
-          <div>
-            <div className="card-title">Juegos y aplicaciones</div>
-            <div className="card-sub">Selecciona un módulo para verlo abajo.{canManage && ' Usa el menú para activarlo o desactivarlo.'}</div>
-          </div>
-          <span className="card-sub">{items.length} módulos</span>
-        </div>
-        <table className="data">
-          <tbody>
-            {items.map(item => (
-              <tr
-                key={item.id}
-                className={`ticket-row${selectedId === item.id ? ' selected' : ''}`}
-                onClick={() => {
-                  setSelectedId(item.id);
-                  setPreviewFailed(false);
-                }}
-              >
-                <td style={{ width: 36 }}>{item.item_type === 'game' ? '🎮' : '📱'}</td>
-                <td>
-                  <div style={{ fontWeight: 700 }}>
-                    {item.title} {item.featured && <span style={{ color: 'var(--warn)' }}>★</span>}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--ink-faint)' }}>{item.category} · {item.slug}</div>
-                </td>
-                <td className="num">
-                  <span className={`chip ${item.is_active ? 'ok' : 'neutral'}`}>
-                    {item.is_active ? 'Activo' : 'Inactivo'}
-                  </span>
-                </td>
-                {canManage && <td className="num dropdown-trigger">
-                  <button
-                    className="action-button"
-                    type="button"
-                    disabled={togglingId === item.id}
-                    onClick={event => {
-                      event.stopPropagation();
-                      setMenuOpenId(menuOpenId === item.id ? null : item.id);
-                    }}
-                  >
-                    Estado ▼
-                  </button>
-                  {menuOpenId === item.id && (
-                    <div className="dropdown-menu" onClick={event => event.stopPropagation()}>
-                      <button type="button" disabled={item.is_active} onClick={() => void handleSetStatus(item, true)}>
-                        Activar
-                      </button>
-                      <button type="button" disabled={!item.is_active} onClick={() => void handleSetStatus(item, false)}>
-                        Desactivar
-                      </button>
-                    </div>
-                  )}
-                </td>}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    </aside>
+    <section className={`${s.panel} tw:min-w-0`}>
+      <div className="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-4">
+        <div className="tw:min-w-0"><p className="tw:mb-2 tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wider tw:text-muted">Vista previa</p><h3 className={s.heading}>{selected.title}</h3><div className={`tw:mt-3 ${s.actions}`}><span className={`${s.badge} ${selected.is_active ? 'tw:text-positive' : 'tw:text-muted'}`}>{selected.is_active ? 'Activo' : 'Inactivo'}</span><span className={s.badge}>{GAME_TIER_LABELS[selected.min_tier] ?? selected.min_tier}</span>{selected.featured && <span className={s.badge}>★ Destacado</span>}</div></div>
+        {canManage && <button type="button" className={s.button} disabled={toggling} onClick={() => void handleToggle(selected)}>{toggling ? 'Actualizando…' : selected.is_active ? 'Desactivar' : 'Activar'}</button>}
       </div>
-
-      <div className="card">
-        <div className="card-head">
-          <div>
-            <div className="card-title">Previsualizar un módulo activo</div>
-            <div className="card-sub">Elige uno de los módulos que los usuarios pueden ver ahora mismo.</div>
-          </div>
-        </div>
-        {activos.length === 0 ? (
-          <div className="placeholder-box" style={{ padding: 30 }}>No hay ningún módulo activo.{canManage && ' Actívalo desde la lista de arriba.'}</div>
-        ) : (
-          <div className="seg" style={{ flexWrap: 'wrap', height: 'auto' }}>
-            {activos.map(item => (
-              <button
-                key={item.id}
-                type="button"
-                className={selected?.id === item.id ? 'on' : ''}
-                onClick={() => {
-                  setSelectedId(item.id);
-                  setPreviewFailed(false);
-                }}
-              >
-                {item.item_type === 'game' ? '🎮' : '📱'} {item.title}
-              </button>
-            ))}
-          </div>
-        )}
+      {selected.description && <p className={`tw:mt-4 tw:whitespace-pre-wrap tw:break-words ${s.muted}`}>{selected.description}</p>}
+      {error && <p role="alert" className={`tw:mt-4 ${s.error}`}>{error}</p>}
+      {selected.resource_kind === 'external' && <p className={`tw:mt-4 ${s.notice}`}>Este juego está en otra web. Desactivarlo lo retira del catálogo, pero no bloquea su dirección ni detiene sus partidas. Algunas webs solo permiten abrir el juego en una pestaña nueva.</p>}
+      <div className="tw:relative tw:mt-5 tw:min-h-[440px] tw:overflow-hidden tw:rounded-xl tw:border tw:border-solid tw:border-stroke tw:bg-canvas tw:sm:min-h-[600px]" aria-busy={selected.is_active && !!selected.target_url && loadedKey !== frameKey && failedKey !== frameKey}>
+        {!selected.is_active ? <div className="tw:flex tw:min-h-[440px] tw:flex-col tw:items-center tw:justify-center tw:gap-3 tw:p-8 tw:text-center"><span aria-hidden="true" className="tw:text-3xl">🎮</span><h4 className="tw:text-lg tw:font-bold">Este juego está inactivo</h4><p className={`tw:max-w-md ${s.muted}`}>{canManage ? 'Actívalo con el botón de arriba para probarlo. La activación también cambia su disponibilidad en el catálogo.' : 'Su vista previa estará disponible cuando se active.'}</p></div>
+          : !selected.target_url ? <p className="tw:p-8">Este juego no tiene una dirección configurada.</p>
+          : failedKey === frameKey ? <div className="tw:space-y-4 tw:p-8"><p>No se pudo cargar la vista previa. Puedes volver a intentarlo o abrir el juego en otra pestaña.</p><button type="button" className={s.button} onClick={() => setRetry(value => value + 1)}>Volver a intentar</button></div>
+          : <>
+            {loadedKey !== frameKey && <div role="status" className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:gap-3 tw:bg-canvas"><span aria-hidden="true" className="tw:size-6 tw:animate-spin tw:rounded-full tw:border-2 tw:border-solid tw:border-stroke tw:border-t-brand" />Abriendo juego…</div>}
+            <iframe key={frameKey} src={selected.target_url} title={`Vista previa de ${selected.title}`} className="tw:absolute tw:inset-0 tw:h-full tw:w-full tw:border-0" sandbox="allow-scripts allow-forms allow-popups" referrerPolicy="no-referrer" onLoad={() => setLoadedKey(frameKey)} onError={() => setFailedKey(frameKey)} />
+          </>}
       </div>
-
-      <div className="card">
-        {!selected ? (
-          <div className="placeholder-box" style={{ padding: 35 }}>{canManage ? 'Activa al menos un módulo para ver su vista previa aquí.' : 'No hay módulos activos para previsualizar.'}</div>
-        ) : (
-          <>
-            <div className="card-head">
-              <div>
-                <div className="card-title">{selected.title}</div>
-                <div className="card-sub" style={{ fontFamily: 'monospace' }}>{selected.target_url}</div>
-                {selected.resource_kind === 'external' && <p className="mini-note">Juego externo. Desactivarlo lo retira del catálogo, pero no bloquea la otra web ni detiene sus partidas.</p>}
-              </div>
-              {selected.target_url && (
-                <a href={selected.target_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 600, fontSize: 12 }}>
-                  Abrir en pestaña nueva
-                </a>
-              )}
-            </div>
-            <div style={{ position: 'relative', paddingTop: '56.25%', background: 'var(--bg)', borderRadius: 8, overflow: 'hidden' }}>
-              {!selected.target_url ? (
-                <div className="placeholder-box" style={{ position: 'absolute', inset: 0 }}>
-                  {canManage ? 'Agrega la URL del módulo para poder previsualizarlo.' : 'Este módulo no tiene una vista previa disponible.'}
-                </div>
-              ) : previewFailed ? (
-                <div className="placeholder-box" style={{ position: 'absolute', inset: 0 }}>
-                  Este módulo no permite incrustarse. Ábrelo en una pestaña nueva para revisarlo.
-                </div>
-              ) : (
-                <iframe
-                  key={selected.id}
-                  src={selected.target_url}
-                  title={`Vista previa de ${selected.title}`}
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
-                  sandbox="allow-scripts allow-forms allow-popups"
-                  referrerPolicy="no-referrer"
-                  onError={() => setPreviewFailed(true)}
-                />
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
+      {selected.is_active && selected.target_url && <div className="tw:mt-4 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3"><p className={s.muted}>Prueba los controles del juego en esta ventana.</p><a className={`${s.button} tw:inline-flex tw:items-center tw:no-underline`} href={selected.target_url} target="_blank" rel="noopener noreferrer">Abrir en pestaña nueva ↗</a></div>}
+    </section>
+  </div>;
 }

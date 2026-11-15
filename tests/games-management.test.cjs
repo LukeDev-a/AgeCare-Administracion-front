@@ -13,12 +13,14 @@ function load(path, dependencies = {}) {
   return scope.exports;
 }
 const meta = load('src/lib/gamesMeta.ts');
+const styles = load('src/pages/juegos/gameStyles.ts');
+const modal = load('src/components/Modal.tsx');
 function find(node, predicate) {
   if (!node || typeof node !== 'object') return undefined;
   if (Array.isArray(node)) return node.map(child => find(child, predicate)).find(Boolean);
   return predicate(node) ? node : find(node.props?.children, predicate);
 }
-function form(editingItem, role = 'editor') {
+function form(editingItem, role = 'editor', failSave = false) {
   const states = [], calls = [];
   let index = 0;
   const hooks = { ...React, useState(initial) {
@@ -27,7 +29,8 @@ function form(editingItem, role = 'editor') {
   } };
   const { GameFormModal } = load('src/pages/juegos/GameFormModal.tsx', {
     react: hooks, '../../lib/gamesMeta': meta, '../../auth/AuthContext': { useAuth: () => ({ user: { role } }) },
-    '../../api/gamesApps': { createGameApp: async payload => calls.push(payload), updateGameApp: async (_id, payload) => calls.push(payload) },
+    '../../api/gamesApps': { createGameApp: async payload => { if (failSave) throw new Error('No se pudo guardar.'); calls.push(payload); }, updateGameApp: async (_id, payload) => { if (failSave) throw new Error('No se pudo guardar.'); calls.push(payload); } },
+    './gameStyles': styles, '../../components/Modal': modal,
   });
   const tree = () => { index = 0; return GameFormModal({ editingItem, onClose() {}, onSaved() {} }); };
   return { tree, calls, html: () => renderToStaticMarkup(tree()), find: predicate => find(tree(), predicate) };
@@ -50,6 +53,21 @@ test('juegos: creación inactiva y recurso local; edición solo manda campos cam
   await edit.find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await new Promise(setImmediate);
   assert.equal(JSON.stringify(edit.calls[0]), JSON.stringify({ title: 'Nuevo título' }));
   assert.equal(form(old, 'analyst').tree(), null);
+});
+
+test('formulario de juegos conserva cambios y expone el error al modal cuando falla el guardado', async () => {
+  const edit = form({ id: 'id', title: 'Juego', slug: 'juego', description: '', item_type: 'game',
+    category: 'Memoria', min_tier: 'gratuito', is_active: true, featured: false, target_url: '/static/juegos/juego/index.html' }, 'editor', true);
+  assert.equal(edit.tree().props.dirty, false);
+  edit.find(node => node.type === 'input' && node.props.value === 'Juego').props.onChange({ target: { value: 'Nuevo nombre' } });
+  assert.equal(edit.tree().props.dirty, true);
+  await edit.find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  await new Promise(setImmediate);
+  assert.equal(edit.tree().props.error, 'No se pudo guardar.');
+  assert.equal(edit.tree().props.busy, false);
+  assert.equal(edit.tree().props.dirty, true);
+  assert.ok(edit.find(node => node.type === 'input' && node.props.value === 'Nuevo nombre'));
+  assert.equal(edit.calls.length, 0);
 });
 
 test('servicio de juegos transmite filtro de estado y conserva array de activos de la API', async () => {

@@ -8,7 +8,7 @@ const { renderToStaticMarkup } = require('react-dom/server');
 
 function load(path, dependencies = {}) {
   const context = { exports: {}, require: name => dependencies[name]
-    ?? (name === './ticketStyles' ? load('src/pages/tickets/ticketStyles.ts') : require(name)) };
+    ?? (name === './ticketStyles' ? load('src/pages/tickets/ticketStyles.ts') : name === './marketStyles' ? load('src/pages/marketplace/marketStyles.ts') : name === '../../components/Modal' ? load('src/components/Modal.tsx') : require(name)) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, context);

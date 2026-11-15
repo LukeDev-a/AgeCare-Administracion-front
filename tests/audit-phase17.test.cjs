@@ -6,7 +6,8 @@ const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 function load(path, dependencies = {}) {
-  const scope = { exports: {}, URLSearchParams, Date, AbortController, require: name => dependencies[name] ?? require(name) };
+  const scope = { exports: {}, URLSearchParams, Date, AbortController, require: name => dependencies[name]
+    ?? (name === './auditStyles' ? load('src/pages/auditoria/auditStyles.ts') : name === '../../components/Modal' ? load('src/components/Modal.tsx') : require(name)) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, scope);
@@ -52,4 +53,15 @@ test('la pantalla ofrece los filtros y explica el período predeterminado sin bo
   const html = renderToStaticMarkup(React.createElement(AuditoriaPage));
   for (const value of ['Tipo de registro', 'Identificador del registro', 'cuentas eliminadas', 'últimos 30 días', 'hasta 90 días', 'Inició sesión', 'Consultó una conversación']) assert.ok(html.includes(value), value);
   assert.ok(!html.includes('>Eliminar<') && !html.includes('>Editar<'));
+});
+
+test('comparación legible conserva cero, falso y null sin convertirlos en ausencia de datos', () => {
+  const { AuditDetail } = load('src/pages/auditoria/AuditDetail.tsx', { '../../lib/auditMeta': meta });
+  const entry = { id: 'event', actor: { admin_id: 'actor', name: 'Admin', role: 'admin' }, action: 'games.update',
+    action_label: 'Modificó un juego', module_label: 'Juegos', entity_name: 'Memoria', entity_id: 'game',
+    before: { is_active: false, value: 0, description: null }, after: { is_active: true, value: 0, description: '' },
+    metadata: {}, ip: null, user_agent: null, created_at: '2026-11-14T15:00:00Z' };
+  const html = renderToStaticMarkup(React.createElement(AuditDetail, { entry, onClose() {} }));
+  for (const value of ['Antes del evento', 'Después del evento', '>0<', '>No<', '>Sí<', 'Sin valor', 'Texto vacío', 'Valor diferente']) assert.ok(html.includes(value), value);
+  assert.ok(!html.includes('JSON.stringify') && !html.includes('undefined'));
 });

@@ -6,7 +6,8 @@ const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 function load(path, dependencies = {}) {
-  const scope = { exports: {}, Error, URLSearchParams, require: name => dependencies[name] ?? require(name) };
+  const scope = { exports: {}, Error, URLSearchParams, require: name => dependencies[name]
+    ?? (name === './moderationStyles' ? load('src/pages/moderacion/moderationStyles.ts') : name === '../../components/Modal' ? load('src/components/Modal.tsx') : require(name)) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, scope);
@@ -56,10 +57,12 @@ test('other exige explicación y error conserva nota/motivo para corregir', asyn
   } }, { item, onResolved() {} });
   const reject = () => detail.find(node => node.type === 'button' && node.props.children === 'Rechazar');
   reject().props.onClick(); await new Promise(setImmediate); assert.equal(calls.length, 0);
+  const confirm = () => detail.find(node => node.type === 'button' && node.props.children === 'Confirmar rechazo');
+  assert.equal(confirm().props.disabled, true);
   assert.match(detail.html(), /debes escribir una explicación/);
   detail.find(node => node.type === 'textarea').props.onChange({ target: { value: 'Revisión del contenido' } });
   detail.find(node => node.type === 'select').props.onChange({ target: { value: 'privacy' } });
-  reject().props.onClick(); await new Promise(setImmediate);
+  confirm().props.onClick(); await new Promise(setImmediate);
   assert.equal(calls[0].reason_code, 'privacy'); assert.equal(calls[0].note, 'Revisión del contenido');
   assert.match(detail.html(), /ALREADY_MODERATED/); assert.equal(detail.find(node => node.type === 'textarea').props.value, 'Revisión del contenido');
 });
@@ -93,4 +96,24 @@ test('cola filtra, pagina y descarta respuestas anteriores', async () => {
   assert.equal(calls.at(-1).params.page, 2);
   page.find(node => node.props?.['aria-label'] === 'Estado de moderación').props.onChange({ target: { value: 'approved' } }); await page.settle();
   assert.equal(calls.at(-1).params.page, 1); assert.equal(calls.at(-1).params.type, 'review');
+});
+
+test('aprobar requiere confirmación, volver conserva nota y el envío bloquea el cierre', async () => {
+  const calls = []; let finish, resolved = 0;
+  const detail = mount('src/pages/moderacion/ModerationDetail.tsx', 'ModerationDetail', { '../../api/moderation': {
+    decideModeration: (_id, payload) => { calls.push(payload); return new Promise(resolve => { finish = resolve; }); },
+  } }, { item, onResolved() { resolved++; } });
+  detail.find(node => node.type === 'textarea').props.onChange({ target: { value: 'Nota conservada' } });
+  const action = text => detail.find(node => node.type === 'button' && node.props.children === text);
+  action('Aprobar').props.onClick();
+  assert.equal(calls.length, 0);
+  action('Volver a revisar').props.onClick();
+  assert.equal(detail.find(node => node.type === 'textarea').props.value, 'Nota conservada');
+  action('Aprobar').props.onClick(); action('Confirmar aprobación').props.onClick();
+  assert.equal(calls.length, 1);
+  assert.equal(detail.tree().props.busy, true);
+  assert.equal(action('Confirmar aprobación').props.disabled, true);
+  assert.equal(calls[0].note, 'Nota conservada');
+  finish(); await new Promise(setImmediate);
+  assert.equal(resolved, 1);
 });

@@ -79,14 +79,14 @@ export function FuncionalPage() {
       <section className={panel} aria-label="Más utilizadas por perfil" aria-busy={!top && !topState.error}>
         <div className="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-5">
         <div><h2 className={heading}>Más utilizadas por perfil</h2><p className={description}>Consulta las funciones con mayor porcentaje de uso dentro de cada perfil.</p></div>
-        <label className={label}>Funciones a mostrar por perfil <select className={field} value={limit} onChange={event => setLimit(Number(event.target.value))}>
-          {[1, 2, 3, 4, 5].map(value => <option key={value} value={value}>{value}</option>)}
-        </select></label></div>
+        <label className={`${label} tw:max-w-sm`}>Cuántas funciones ver por perfil <select className={field} value={limit} onChange={event => setLimit(Number(event.target.value))}>
+          {[1, 2, 3, 4, 5].map(value => <option key={value} value={value}>{value === 1 ? 'La más utilizada' : `Las ${value} más utilizadas`}</option>)}
+        </select><span className="tw:text-sm tw:font-normal tw:text-muted">Por ejemplo, elige 3 para ver hasta tres funciones en cada perfil. No cambia los porcentajes de uso.</span></label></div>
         {topState.error && <p role="alert" className={notice}>{topState.error}</p>}
         {!top && !topState.error && <p role="status" className={notice}>Cargando ranking...</p>}
         {top && top.calculable_only !== true && <p role="status" className={notice}>No se puede verificar si este ranking excluye resultados no calculables. Actualiza la API para consultar el ranking validado.</p>}
         {top?.calculable_only === true && <>
-          <p className={notice}>Últimos {days} días · Solo porcentajes calculables, de mayor a menor; se conserva el cero válido.</p>
+          <p className={notice}>Últimos {days} días · Hasta {limit} {limit === 1 ? 'función por perfil, la más utilizada' : 'funciones por perfil, de mayor a menor uso'}. Solo se incluyen porcentajes calculables; un 0 % válido también puede aparecer.</p>
           {!top.top_by_role.length && <p>Sin datos de funcionalidades por perfil.</p>}
           <div className="tw:grid tw:gap-5 tw:lg:grid-cols-2">{top.top_by_role.map(item => <div key={item.role} className="tw:rounded-xl tw:border tw:border-solid tw:border-stroke tw:bg-canvas tw:p-5">
             <h3 className="tw:mb-5 tw:flex tw:items-center tw:gap-3 tw:text-lg tw:font-semibold"><span aria-hidden="true" className="tw:h-3 tw:w-3 tw:rounded-full" style={{ background: FEATURE_ROLE_COLORS[item.role] ?? 'var(--ink)' }} />{featureRoleName(item.role)}</h3>

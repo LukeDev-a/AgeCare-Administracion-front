@@ -6,7 +6,8 @@ const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 function load(path, dependencies = {}) {
-  const scope = { exports: {}, Error, URLSearchParams, require: name => dependencies[name] ?? require(name) };
+  const scope = { exports: {}, Error, URLSearchParams, require: name => dependencies[name]
+    ?? (name === './marketStyles' ? load('src/pages/marketplace/marketStyles.ts') : name === '../../components/Modal' ? load('src/components/Modal.tsx') : require(name)) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, scope);
@@ -62,7 +63,7 @@ test('detalle distingue cero, permite borrar opcionales y publica mediante PATCH
   await new Promise(setImmediate); assert.equal(JSON.stringify(patches[0]), JSON.stringify({ status: 'published' }));
   detail.find(node => node.type === 'input' && node.props.type === 'number').props.onChange({ target: { value: '' } });
   detail.find(node => node.type === 'input' && node.props.value === product.image_url).props.onChange({ target: { value: '' } });
-  assert.equal(detail.find(node => node.type === 'button' && node.props.children === 'Publicar').props.disabled, true);
+  assert.equal(detail.find(node => node.type === 'button' && node.props.children === 'Archivar').props.disabled, true);
   await detail.find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await new Promise(setImmediate);
   assert.equal(JSON.stringify(patches[1]), JSON.stringify({ price_clp: null, image_url: null }));
 });
@@ -88,7 +89,7 @@ test('restaurar archivado envía solo draft, requiere guardar edición y no apar
   await button().props.onClick(); await new Promise(setImmediate);
   assert.equal(JSON.stringify(patches[0]), JSON.stringify({ status: 'draft' }));
   detail.find(node => node.type === 'input' && node.props.value === product.name).props.onChange({ target: { value: 'Cambio sin guardar' } });
-  assert.equal(button().props.disabled, true);
+  assert.equal(detail.find(node => node.type === 'button' && node.props.children === 'Publicar').props.disabled, true);
   const { ProductDetail } = load('src/pages/marketplace/ProductDetail.tsx', { ...common, '../../api/marketplace': {},
     '../../auth/AuthContext': { useAuth: () => ({ user: { role: 'moderator' } }) } });
   const html = renderToStaticMarkup(React.createElement(ProductDetail, { product: { ...product, status: 'archived' }, onChanged() {} }));
@@ -114,4 +115,48 @@ test('listado aplica filtros combinados, pagina y descarta respuesta anterior', 
   await panel.settle(); assert.equal(requests.at(-1).params.page, 2);
   panel.find(node => node.props?.['aria-label'] === 'Filtrar productos').props.onChange({ target: { value: 'published' } });
   await panel.settle(); assert.equal(requests.at(-1).params.page, 1); assert.equal(requests.at(-1).params.category, 'Bienestar');
+});
+
+test('guardado usa respuesta confirmada, limpia dirty y conserva una nueva edición si falla', async () => {
+  let fail = false;
+  const detail = mount('src/pages/marketplace/ProductDetail.tsx', 'ProductDetail', { '../../api/marketplace': {
+    updateProduct: async (_id, patch) => { if (fail) throw new Error('Error de guardado'); return { ...product, ...patch, name: patch.name.trim() }; },
+  } }, { product, onChanged() {} });
+  detail.find(node => node.type === 'input' && node.props.value === product.name).props.onChange({ target: { value: '  Nombre confirmado  ' } });
+  assert.equal(detail.tree().props.dirty, true);
+  await detail.find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await new Promise(setImmediate);
+  assert.equal(detail.tree().props.dirty, false);
+  assert.ok(detail.find(node => node.type === 'input' && node.props.value === 'Nombre confirmado'));
+  fail = true;
+  detail.find(node => node.type === 'input' && node.props.value === 'Nombre confirmado').props.onChange({ target: { value: 'Nueva edición' } });
+  await detail.find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await new Promise(setImmediate);
+  assert.equal(detail.tree().props.dirty, true);
+  assert.equal(detail.tree().props.error, 'Error de guardado');
+  assert.ok(detail.find(node => node.type === 'input' && node.props.value === 'Nueva edición'));
+});
+
+test('cuidadoras: suspensión exige confirmación/motivo y servicio admite paginación', async () => {
+  const requests = [];
+  const api = load('src/api/caregivers.ts', { './client': { apiFetch: async (path, options) => {
+    requests.push({ path, body: options?.body && JSON.parse(options.body) }); return new Response('{}');
+  } } });
+  await api.fetchCaregivers({ search: 'Ana', status: 'pending', page: 2 });
+  assert.equal(new URLSearchParams(requests[0].path.split('?')[1]).get('page'), '2');
+  await api.updateCaregiverStatus('c1', 'suspended', 'Documentación incompleta.');
+  assert.equal(requests[1].body.reason, 'Documentación incompleta.');
+  const changes = [];
+  const profile = { caregiver_id: 'c1', name: 'Ana', zone: 'Centro', languages: ['Español'], specialties: [], certifications_count: 1, reviews_count: 0, rating_avg: null, status: 'approved' };
+  const detail = mount('src/pages/marketplace/CaregiverDetail.tsx', 'CaregiverDetail', {
+    '../../api/caregivers': { updateCaregiverStatus: async (...args) => changes.push(args) },
+    '../../lib/caregiverMeta': { CAREGIVER_STATUS_META: { approved: { label: 'Aprobada' }, suspended: { label: 'Suspendida' } } },
+  }, { caregiver: profile, onChanged() {} });
+  detail.find(node => node.type === 'button' && node.props.children === 'Suspender').props.onClick();
+  assert.equal(changes.length, 0);
+  const confirm = () => detail.find(node => node.type === 'button' && Array.isArray(node.props.children) && node.props.children.join('') === 'Confirmar suspensión');
+  assert.equal(confirm().props.disabled, true);
+  detail.find(node => node.type === 'textarea').props.onChange({ target: { value: 'Documentación incompleta.' } });
+  assert.equal(confirm().props.disabled, false);
+  confirm().props.onClick(); await new Promise(setImmediate);
+  assert.deepEqual(changes[0], ['c1', 'suspended', 'Documentación incompleta.']);
+  assert.equal(detail.tree().props.dirty, false);
 });

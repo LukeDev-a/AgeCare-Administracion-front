@@ -109,7 +109,7 @@ test('el fallo al guardar conserva el texto y muestra el error sin habilitar la 
   await new Promise(setImmediate);
   assert.match(h.html(), /No fue posible guardar el texto/);
   assert.equal(h.find(node => node.type === 'textarea').props.value, 'Texto que debe conservarse tras el error');
-  assert.equal(h.find(node => node.type === 'button' && node.props.children === 'Publicar').props.disabled, true);
+  assert.equal(h.find(node => node.type === 'button' && node.props.children === 'Publicar ahora').props.disabled, true);
 });
 
 test('guardar borrador no programa y la fecha exige una confirmación separada', async () => {
@@ -141,7 +141,7 @@ test('guardar borrador no programa y la fecha exige una confirmación separada',
   assert.equal(publishedPayload.publish_at, new Date(date).toISOString());
   assert.equal(h.tree().props.dirty, false);
   assert.match(h.html(), /Publicación programada/);
-  assert.equal(h.find(node => node.type === 'button' && node.props.children === 'Publicar').props.disabled, false);
+  assert.equal(h.find(node => node.type === 'button' && node.props.children === 'Publicar ahora').props.disabled, false);
   h.find(node => node.type === 'textarea').props.onChange({ target: { value: 'Nueva modificación que todavía no se guarda' } });
   assert.equal(h.tree().props.dirty, true);
 });
@@ -204,6 +204,38 @@ test('una noticia archivada no permite programar fecha, pero guarda etiquetas si
   assert.equal(Object.hasOwn(payload, 'publish_at'), false);
   assert.equal(h.tree().props.dirty, false);
   assert.match(h.html(), /Cambios guardados/);
+});
+
+test('publicar ahora confirma que se elimina la programación, cancelar no envía y un fallo conserva confirmación', async () => {
+  const item = { id: 'scheduled', title: 'Noticia programada', body: 'Texto editorial aprobado', tags: [], type: 'news', status: 'draft',
+    text_version: 1, approved_version: 1, publish_at: '2026-12-12T18:30:00Z', updated_at: '2026-11-11', audio_available: true, audio_status: 'ready', provenance: null };
+  let attempts = 0, changed = 0;
+  const h = mount('src/pages/contenido/ContentDetail.tsx', 'ContentDetail', {
+    '../../api/content': { changeContentPublication: async (id, unpublish) => {
+      assert.equal(id, item.id); assert.equal(unpublish, false);
+      if (++attempts === 1) throw new Error('No fue posible publicar');
+    } },
+    '../../auth/AuthContext': { useAuth: () => ({ user: { role: 'editor' } }) },
+    '../../lib/contentMeta': load('src/lib/contentMeta.ts'), '../../lib/format': { ticketDate: String },
+  }, { item, onChanged() { changed++; }, onDeleted() {} });
+  const click = label => h.find(n => n.type === 'button' && n.props.children === label).props.onClick();
+  click('Publicar ahora');
+  assert.equal(attempts, 0);
+  assert.match(h.html(), /2026-12-12T18:30:00Z/);
+  assert.match(h.html(), /se eliminará esa programación/);
+  click('Volver y conservar programación');
+  assert.equal(attempts, 0);
+  assert.equal(item.publish_at, '2026-12-12T18:30:00Z');
+  click('Publicar ahora');
+  click('Confirmar y publicar ahora');
+  assert.equal(h.tree().props.busy, true);
+  await new Promise(setImmediate);
+  assert.match(h.html(), /No fue posible publicar/);
+  assert.equal(changed, 0);
+  click('Confirmar y publicar ahora');
+  await new Promise(setImmediate);
+  assert.equal(attempts, 2);
+  assert.equal(changed, 1);
 });
 
 test('eliminar exige confirmación interna, cancelar conserva edición y un fallo permite reintentar', async () => {

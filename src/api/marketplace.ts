@@ -63,9 +63,10 @@ export async function createProduct(payload: ProductPayload): Promise<void> {
   if (!response.ok) throw new Error(await parseErrorMessage(response, 'No fue posible crear el producto.'));
 }
 
-export async function updateProduct(productId: string, payload: ProductPatch): Promise<void> {
+export async function updateProduct(productId: string, payload: ProductPatch): Promise<Product | undefined> {
   const response = await apiFetch(`/marketplace/products/${productId}`, { method: 'PATCH', body: JSON.stringify(payload) });
   if (!response.ok) throw new Error(await parseErrorMessage(response, 'No fue posible guardar el producto.'));
+  if (response.status !== 204) return response.json();
 }
 
 export async function archiveProduct(productId: string): Promise<void> {

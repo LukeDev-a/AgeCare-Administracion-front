@@ -1,80 +1,45 @@
 import type { GameAppItem } from '../../api/gamesApps';
 import { GAME_TIER_LABELS, GAME_TYPE_LABELS } from '../../lib/gamesMeta';
+import { gameStyles as s } from './gameStyles';
 
 interface GamesTableProps {
   canManage: boolean;
   items: GameAppItem[];
+  busy?: boolean;
   onToggle: (item: GameAppItem) => void;
   onEdit: (item: GameAppItem) => void;
   onDelete: (item: GameAppItem) => void;
+  onInspect: (item: GameAppItem) => void;
 }
 
-export function GamesTable({ items, canManage, onToggle, onEdit, onDelete }: GamesTableProps) {
-  if (items.length === 0) {
-    return (
-      <table className="data">
-        <tbody>
-          <tr><td colSpan={canManage ? 7 : 6}>No hay juegos ni aplicaciones registradas aún.</td></tr>
-        </tbody>
-      </table>
-    );
-  }
+export function GamesTable({ items, canManage, busy = false, onToggle, onEdit, onDelete, onInspect }: GamesTableProps) {
+  if (items.length === 0) return <div className="tw:py-14 tw:text-center">
+    <p className="tw:text-lg tw:font-semibold">No hay resultados para esta consulta</p>
+    <p className={`tw:mt-2 ${s.muted}`}>Prueba otro nombre o cambia los filtros.</p>
+  </div>;
 
-  return (
-    <table className="data">
-      <thead>
-        <tr>
-          <th>Título / Slug</th>
-          <th>Tipo</th>
-          <th>Categoría</th>
-          <th>Plan mínimo</th>
-          <th className="num">Destacado</th>
-          <th className="num">Estado</th>
-          {canManage && <th>Acciones</th>}
-        </tr>
-      </thead>
-      <tbody>
-        {items.map(item => (
-          <tr key={item.id}>
-            <td>
-              <div style={{ fontWeight: 700 }}>{item.title}</div>
-              <div style={{ fontSize: 11, color: 'var(--ink-faint)' }}>{item.slug}</div>
-              <details><summary>Ver información</summary>
-                <p>{item.description || 'Sin descripción.'}</p>
-                <p>Dirección del juego: {item.target_url || 'Sin recurso configurado'}</p>
-                {item.resource_kind === 'external' && <p>Juego externo: desactivarlo lo retira del catálogo; su web sigue disponible.</p>}
-                <p>Creador: {item.created_by_name || 'Sin registro histórico'}</p>
-                <p>Creado: {item.created_at ? new Date(item.created_at).toLocaleString('es-CL') : 'Sin datos'}</p>
-                <p>Último cambio: {item.updated_at ? new Date(item.updated_at).toLocaleString('es-CL') : 'Sin datos'}</p>
-              </details>
-            </td>
-            <td>{GAME_TYPE_LABELS[item.item_type] ?? item.item_type}</td>
-            <td>{item.category}</td>
-            <td>{GAME_TIER_LABELS[item.min_tier] ?? item.min_tier}</td>
-            <td className="num">{item.featured ? '★ Sí' : 'No'}</td>
-            <td className="num">
-              {canManage ? <button
-                className={`chip ${item.is_active ? 'ok' : 'neutral'}`}
-                style={{ border: 'none', cursor: 'pointer' }}
-                type="button"
-                onClick={() => onToggle(item)}
-              >
-                {item.is_active ? 'Activo' : 'Inactivo'}
-              </button> : <span className={`chip ${item.is_active ? 'ok' : 'neutral'}`}>
-                {item.is_active ? 'Activo' : 'Inactivo'}
-              </span>}
-            </td>
-            {canManage && <td>
-              <button className="action-button" type="button" onClick={() => onEdit(item)} style={{ marginRight: 8 }}>
-                Editar
-              </button>
-              <button className="action-button" type="button" onClick={() => onDelete(item)}>
-                Eliminar
-              </button>
-            </td>}
-          </tr>
-        ))}
-      </tbody>
+  return <div className="tw:overflow-x-auto tw:rounded-xl tw:border tw:border-solid tw:border-stroke">
+    <table className="tw:w-full tw:min-w-[860px] tw:border-collapse tw:text-left tw:text-sm tw:[&_th]:bg-canvas tw:[&_th]:px-4 tw:[&_th]:py-4 tw:[&_th]:font-semibold tw:[&_td]:border-x-0 tw:[&_td]:border-b-0 tw:[&_td]:border-t tw:[&_td]:border-solid tw:[&_td]:border-stroke tw:[&_td]:px-4 tw:[&_td]:py-5 tw:[&_td]:align-middle">
+      <thead><tr><th>Juego o aplicación</th><th>Categoría</th><th>Plan mínimo</th><th>Estado</th><th>Información</th>{canManage && <th>Acciones</th>}</tr></thead>
+      <tbody>{items.map(item => <tr key={item.id} className="tw:hover:bg-canvas/50">
+        <td className="tw:max-w-72">
+          <p className="tw:font-semibold tw:leading-relaxed">{item.title}</p>
+          <div className="tw:mt-2 tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:text-xs tw:text-muted">
+            <span>{GAME_TYPE_LABELS[item.item_type] ?? item.item_type}</span>
+            {item.featured && <span className="tw:text-brand-ink">★ Destacado</span>}
+            {item.resource_kind === 'external' && <span>En otra web</span>}
+          </div>
+        </td>
+        <td>{item.category}</td>
+        <td>{GAME_TIER_LABELS[item.min_tier] ?? item.min_tier}</td>
+        <td><span className={`${s.badge} ${item.is_active ? 'tw:text-positive' : 'tw:text-muted'}`}><span aria-hidden="true">{item.is_active ? '●' : '○'}</span>{item.is_active ? 'Activo' : 'Inactivo'}</span></td>
+        <td><button type="button" className={s.button} onClick={() => onInspect(item)} disabled={busy} aria-label={`Ver detalle de ${item.title}`}>Ver detalle</button></td>
+        {canManage && <td><div className="tw:flex tw:flex-wrap tw:gap-2">
+          <button type="button" className={s.button} disabled={busy} onClick={() => onEdit(item)} aria-label={`Editar ${item.title}`}>Editar</button>
+          <button type="button" className={s.button} disabled={busy} onClick={() => onToggle(item)} aria-label={`${item.is_active ? 'Desactivar' : 'Activar'} ${item.title}`}>{item.is_active ? 'Desactivar' : 'Activar'}</button>
+          <button type="button" className={`${s.button} tw:text-negative`} disabled={busy} onClick={() => onDelete(item)} aria-label={`Eliminar ${item.title}`}>Eliminar</button>
+        </div></td>}
+      </tr>)}</tbody>
     </table>
-  );
+  </div>;
 }

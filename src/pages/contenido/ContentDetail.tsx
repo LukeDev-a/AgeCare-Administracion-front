@@ -24,6 +24,7 @@ export function ContentDetail({ item, onChanged, onDeleted, onEditingChange, onC
   const [isDeleting, setIsDeleting] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmPublish, setConfirmPublish] = useState(false);
   const [scheduled, setScheduled] = useState(item.publish_at ? localDate(item.publish_at) : '');
   const [audio, setAudio] = useState('');
   const [error, setError] = useState('');
@@ -90,10 +91,13 @@ export function ContentDetail({ item, onChanged, onDeleted, onEditingChange, onC
   }
 
   async function handleTogglePublish() {
+    if (busy || dirty || (item.status !== 'published' && (!item.audio_available || item.approved_version !== item.text_version))) return;
     setIsPublishing(true);
     setError('');
     try {
       await changeContentPublication(item.id, item.status === 'published');
+      setConfirmPublish(false);
+      setNotice(item.status === 'published' ? 'Contenido retirado.' : 'Contenido publicado.');
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No fue posible cambiar el estado.');
@@ -118,8 +122,19 @@ export function ContentDetail({ item, onChanged, onDeleted, onEditingChange, onC
   const status = CONTENT_STATUS_META[item.status] ?? CONTENT_STATUS_META.draft;
 
   return (
-    <Modal title={confirmDelete ? 'Eliminar contenido' : 'Editar, aprobar y publicar contenido'} onClose={onClose} dirty={dirty} busy={busy} error={error}>
-    {confirmDelete ? <section className="tw:space-y-5 tw:p-3 tw:sm:p-5" aria-label="Confirmar eliminación del contenido">
+    <Modal title={confirmDelete ? 'Eliminar contenido' : confirmPublish ? 'Confirmar publicación inmediata' : 'Editar, aprobar y publicar contenido'} onClose={onClose} dirty={dirty} busy={busy} error={error}>
+    {confirmPublish ? <section className="tw:space-y-5 tw:p-3 tw:sm:p-5" aria-label="Confirmar publicación inmediata">
+      <h3 className={ui.heading}>¿Quieres publicar este contenido ahora?</h3>
+      <p className="tw:rounded-xl tw:bg-canvas tw:p-5 tw:font-semibold tw:break-words">{item.title}</p>
+      {item.publish_at ? <div className={ui.notice}>
+        <p>La publicación está programada para el {ticketDate(item.publish_at)}.</p>
+        <p>Si confirmas, el contenido se publicará inmediatamente y se eliminará esa programación. No se esperará a la fecha elegida.</p>
+      </div> : <p>El contenido se publicará inmediatamente, sin esperar una fecha programada.</p>}
+      <div className={`${ui.actions} tw:justify-end`}>
+        <button type="button" className={ui.button} disabled={busy} onClick={() => { setConfirmPublish(false); setError(''); }}>{item.publish_at ? 'Volver y conservar programación' : 'Volver sin publicar'}</button>
+        <button type="button" className={`${ui.button} ${ui.primary}`} disabled={busy || dirty || !item.audio_available || item.approved_version !== item.text_version} onClick={() => void handleTogglePublish()}>{isPublishing ? 'Publicando…' : 'Confirmar y publicar ahora'}</button>
+      </div>
+    </section> : confirmDelete ? <section className="tw:space-y-5 tw:p-3 tw:sm:p-5" aria-label="Confirmar eliminación del contenido">
       <h3 className={ui.heading}>¿Quieres eliminar este contenido?</h3>
       <p className="tw:rounded-xl tw:bg-canvas tw:p-5 tw:font-semibold tw:break-words">{item.title}</p>
       <p>Dejará de aparecer en el catálogo. Su registro e historial se conservan en la base de datos, pero no podrás restaurarlo desde esta consola.</p>
@@ -196,8 +211,12 @@ export function ContentDetail({ item, onChanged, onDeleted, onEditingChange, onC
             <p className="tw:text-sm tw:text-muted">Guardar el borrador no programa la fecha. Una vez programado, se publicará automáticamente si conserva la aprobación y el audio vigentes.</p>
           </div> : <p className={ui.notice}>{item.status === 'archived' ? 'Este contenido está archivado. Solo los borradores admiten una fecha programada. Puedes volver a publicarlo manualmente.' : 'Este contenido ya está publicado. La programación solo está disponible para borradores.'}</p>}
           <p className={ui.description}>{item.status === 'published' ? 'El contenido está publicado. Puedes retirarlo del catálogo cuando lo necesites.' : dirty ? 'Primero guarda los cambios del formulario.' : item.approved_version !== item.text_version ? 'Falta aprobar la versión actual del texto.' : !item.audio_available ? 'Falta que el audio de la versión aprobada esté disponible.' : 'El texto está aprobado y el audio está disponible. Puedes continuar con la publicación.'}</p>
-          <div className={ui.actions}><button className={`${ui.button} ${ui.primary}`} type="button" disabled={busy || dirty || (item.status !== 'published' && (!item.audio_available || item.approved_version !== item.text_version))} onClick={() => void handleTogglePublish()}>
-            {isPublishing ? 'Actualizando...' : item.status === 'published' ? 'Retirar' : 'Publicar'}
+          {item.status === 'draft' && savedValues.scheduled && <p className={ui.notice}>Ya tiene una fecha programada. No necesitas pulsar «Publicar ahora»: úsalo solo si quieres adelantar la publicación y eliminar la programación.</p>}
+          <div className={ui.actions}><button className={`${ui.button} ${ui.primary}`} type="button" disabled={busy || dirty || (item.status !== 'published' && (!item.audio_available || item.approved_version !== item.text_version))} onClick={() => {
+            if (item.status === 'published') void handleTogglePublish();
+            else { setError(''); setConfirmPublish(true); }
+          }}>
+            {isPublishing ? 'Actualizando...' : item.status === 'published' ? 'Retirar' : 'Publicar ahora'}
           </button>
           {user?.role === 'admin' && <button className={`${ui.button} tw:text-negative`} type="button" disabled={busy || item.status === 'published'} onClick={() => { setError(''); setConfirmDelete(true); }}>
             {isDeleting ? 'Eliminando...' : 'Eliminar'}

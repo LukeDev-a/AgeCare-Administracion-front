@@ -8,7 +8,7 @@ const { renderToStaticMarkup } = require('react-dom/server');
 class FormValues { constructor(values) { this.values = values; } get(name) { return this.values[name]; } }
 function load(path, dependencies = {}) {
   const scope = { exports: {}, Error, URLSearchParams, FormData: FormValues, require: name => dependencies[name]
-    ?? (name === './ticketStyles' ? load('src/pages/tickets/ticketStyles.ts') : require(name)) };
+    ?? (name === './ticketStyles' ? load('src/pages/tickets/ticketStyles.ts') : name === '../../components/Modal' ? load('src/components/Modal.tsx') : require(name)) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, scope);
@@ -76,7 +76,12 @@ test('formulario exige confirmar expresamente el mismo ticket sin enlace', async
     TicketApiError, createTicket: async payload => { calls.push(payload); if (!payload.confirm_unlinked) throw new TicketApiError(); },
   } }, { onCreated() { created++; }, onCancel() {} });
   const values = { subject: 'Solicitud', user_email: 'persona@example.org', description: 'Mi descripción', category: 'other', priority: 'high', channel: 'phone' };
+  assert.equal(form.tree().props.dirty, false);
+  assert.match(form.html(), /Correo de quien solicita ayuda/);
+  form.find(node => node.type === 'form').props.onChange({ currentTarget: values });
+  assert.equal(form.tree().props.dirty, true);
   form.find(node => node.type === 'form').props.onSubmit({ preventDefault() {}, currentTarget: values });
+  assert.equal(form.tree().props.busy, true);
   await new Promise(setImmediate);
   assert.match(form.html(), /crear el ticket sin enlace/); assert.equal(created, 0); assert.equal(calls.length, 1);
   form.find(node => node.type === 'button' && node.props.children === 'Confirmar creación sin enlace').props.onClick();
