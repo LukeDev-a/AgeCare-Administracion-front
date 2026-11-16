@@ -9,10 +9,12 @@ export interface Caregiver {
   specialties: string[];
   languages: string[];
   certifications_count: number;
+  certifications_verified?: boolean;
   reviews_count: number;
   rating_avg: number | null;
   status: CaregiverStatus;
   submitted_at: string;
+  internal_note?: string | null;
 }
 
 export interface CaregiversListResponse {
@@ -51,4 +53,12 @@ export async function updateCaregiverStatus(caregiverId: string, status: Caregiv
   if (status === 'suspended') payload.reason = reason ?? 'Perfil suspendido durante la revisión administrativa.';
   const response = await apiFetch(`/marketplace/caregivers/${caregiverId}`, { method: 'PATCH', body: JSON.stringify(payload) });
   if (!response.ok) throw new Error(await parseErrorMessage(response, 'No fue posible actualizar el perfil.'));
+}
+
+export async function updateCaregiverNote(caregiverId: string, internalNote: string): Promise<Caregiver> {
+  const response = await apiFetch(`/marketplace/caregivers/${caregiverId}`, {
+    method: 'PATCH', body: JSON.stringify({ internal_note: internalNote }),
+  });
+  if (!response.ok) throw new Error(await parseErrorMessage(response, 'No fue posible guardar la nota interna.'));
+  return response.json();
 }

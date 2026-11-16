@@ -6,7 +6,7 @@ const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 function load(path, dependencies = {}) {
-  const scope = { exports: {}, Error, URLSearchParams, require: name => dependencies[name]
+  const scope = { exports: {}, Error, URL, URLSearchParams, require: name => dependencies[name]
     ?? (name === './marketStyles' ? load('src/pages/marketplace/marketStyles.ts') : name === '../../components/Modal' ? load('src/components/Modal.tsx') : require(name)) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
@@ -39,6 +39,24 @@ function mount(path, name, dependencies, props = {}) {
 }
 const product = { id: 'id', name: 'Artículo de prueba', category: 'Bienestar', vendor: 'Proveedor', price_clp: 0,
   external_url: 'https://example.cl/articulo', image_url: 'https://example.cl/imagen.png', status: 'draft', updated_at: '2026-10-27T15:00:00Z' };
+
+test('crear artículo rechaza texto vacío o enlace inválido y permite omitir precio e imagen', async () => {
+  const calls = [];
+  const form = mount('src/pages/marketplace/NewProductForm.tsx', 'NewProductForm', {
+    '../../api/marketplace': { createProduct: async payload => calls.push(payload) },
+  }, { onCreated() {}, onCancel() {} });
+  const fill = (name, value) => form.find(n => n.type === 'input' && n.props.name === name).props.onChange({ target: { value } });
+  const submit = async () => { form.find(n => n.type === 'form').props.onSubmit({ preventDefault() {} }); await new Promise(setImmediate); };
+  fill('name', '   '); await submit();
+  assert.equal(calls.length, 0); assert.match(form.tree().props.error, /El nombre debe tener/);
+  fill('name', ' Producto válido '); fill('category', ' Bienestar '); fill('vendor', ' Proveedor ');
+  fill('external_url', 'http://example.org/producto'); await submit();
+  assert.equal(calls.length, 0); assert.match(form.tree().props.error, /HTTPS válida/);
+  fill('external_url', 'https://example.org/producto'); await submit();
+  assert.equal(calls[0].name, 'Producto válido'); assert.equal(calls[0].category, 'Bienestar');
+  assert.equal(Object.hasOwn(calls[0], 'price_clp'), false); assert.equal(Object.hasOwn(calls[0], 'image_url'), false);
+  fill('price_clp', '0'); await submit(); assert.equal(calls[1].price_clp, 0);
+});
 
 test('productos: filtros/página y PATCH parcial conservan null explícito', async () => {
   const calls = [];
@@ -133,6 +151,73 @@ test('guardado usa respuesta confirmada, limpia dirty y conserva una nueva edici
   assert.equal(detail.tree().props.dirty, true);
   assert.equal(detail.tree().props.error, 'Error de guardado');
   assert.ok(detail.find(node => node.type === 'input' && node.props.value === 'Nueva edición'));
+});
+
+test('cuidadoras: nota independiente usa respuesta guardada, conserva edición ante fallo y permite vaciar', async () => {
+  const calls = [];
+  const profile = { caregiver_id: 'c1', name: 'Ana', zone: 'Centro', languages: [], specialties: [], certifications_count: 1,
+    certifications_verified: false, reviews_count: 0, rating_avg: null, status: 'pending', internal_note: 'Nota previa' };
+  const api = load('src/api/caregivers.ts', { './client': { apiFetch: async (path, options) => {
+    calls.push({ path, body: JSON.parse(options.body) });
+    return new Response(JSON.stringify({ ...profile, internal_note: 'Respuesta confirmada' }));
+  } } });
+  assert.equal((await api.updateCaregiverNote('c1', 'Nota nueva')).internal_note, 'Respuesta confirmada');
+  assert.deepEqual(calls[0].body, { internal_note: 'Nota nueva' });
+  let attempts = 0;
+  const h = mount('src/pages/marketplace/CaregiverDetail.tsx', 'CaregiverDetail', {
+    '../../api/caregivers': { updateCaregiverNote: async (id, note) => {
+      assert.equal(id, 'c1'); if (++attempts === 1) throw new Error('No se pudo guardar la nota');
+      return { ...profile, internal_note: note };
+    } }, '../../lib/caregiverMeta': { CAREGIVER_STATUS_META: { pending: { label: 'Pendiente' } } },
+  }, { caregiver: profile, onChanged() {} });
+  const note = () => h.find(n => n.type === 'textarea');
+  const save = () => h.find(n => n.type === 'button' && n.props.children === 'Guardar nota interna');
+  assert.equal(note().props.value, 'Nota previa'); assert.equal(save().props.disabled, true);
+  note().props.onChange({ target: { value: 'Una nota que debe conservarse' } });
+  assert.equal(h.tree().props.dirty, true);
+  save().props.onClick(); assert.equal(h.tree().props.busy, true);
+  await new Promise(setImmediate);
+  assert.equal(h.tree().props.error, 'No se pudo guardar la nota');
+  assert.equal(note().props.value, 'Una nota que debe conservarse');
+  save().props.onClick(); await new Promise(setImmediate);
+  assert.equal(h.tree().props.dirty, false);
+  assert.equal(save().props.disabled, true);
+  note().props.onChange({ target: { value: '' } });
+  save().props.onClick(); await new Promise(setImmediate);
+  assert.equal(h.tree().props.dirty, false); assert.equal(note().props.value, '');
+});
+
+test('cuidadoras: moderator no ve ni edita las notas internas aunque lleguen en props', () => {
+  const profile = { caregiver_id: 'c1', name: 'Ana', zone: 'Centro', languages: [], specialties: [], certifications_count: 1,
+    certifications_verified: true, reviews_count: 0, rating_avg: null, status: 'pending', internal_note: 'NOTA_PRIVADA_NO_MOSTRAR' };
+  const h = mount('src/pages/marketplace/CaregiverDetail.tsx', 'CaregiverDetail', {
+    '../../api/caregivers': {}, '../../auth/AuthContext': { useAuth: () => ({ user: { role: 'moderator' } }) },
+    '../../lib/caregiverMeta': { CAREGIVER_STATUS_META: { pending: { label: 'Pendiente' } } },
+  }, { caregiver: profile, onChanged() {} });
+  assert.doesNotMatch(h.html(), /NOTA_PRIVADA_NO_MOSTRAR|Guardar nota interna/);
+});
+
+test('cuidadoras: cantidad registrada no permite aprobar sin verificación explícita', async () => {
+  for (const value of [false, undefined, true]) {
+    const calls = [];
+    const profile = { caregiver_id: 'c1', name: 'Ana', zone: 'Centro', languages: [], specialties: [],
+      certifications_count: 1, certifications_verified: value, reviews_count: 0, rating_avg: null, status: 'pending' };
+    const detail = mount('src/pages/marketplace/CaregiverDetail.tsx', 'CaregiverDetail', {
+      '../../api/caregivers': { updateCaregiverStatus: async (...args) => calls.push(args) },
+      '../../lib/caregiverMeta': { CAREGIVER_STATUS_META: { pending: { label: 'Pendiente' } } },
+    }, { caregiver: profile, onChanged() {} });
+    const approve = detail.find(n => n.type === 'button' && n.props.children === 'Aprobar');
+    assert.equal(approve.props.disabled, value !== true);
+    assert.match(detail.html(), value === true ? /Certificaciones verificadas/ : value === false ? /Pendiente de verificación/ : /Sin información de verificación/);
+    approve.props.onClick();
+    if (value !== true) {
+      assert.equal(detail.find(n => n.type === 'button' && Array.isArray(n.props.children) && n.props.children.join('') === 'Confirmar aprobación'), undefined);
+    } else {
+      detail.find(n => n.type === 'button' && Array.isArray(n.props.children) && n.props.children.join('') === 'Confirmar aprobación').props.onClick();
+      await new Promise(setImmediate);
+      assert.deepEqual(calls[0], ['c1', 'approved', undefined]);
+    }
+  }
 });
 
 test('cuidadoras: suspensión exige confirmación/motivo y servicio admite paginación', async () => {

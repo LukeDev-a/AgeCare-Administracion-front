@@ -23,6 +23,7 @@ export function JuegosPage() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState('');
   const [notice, setNotice] = useState('');
+  const [noticeTone, setNoticeTone] = useState<'positive' | 'negative'>('positive');
   const [reloadToken, setReloadToken] = useState(0);
   const queryKey = `${typeFilter}:${stateFilter}:${reloadToken}`;
   const isLoading = result?.key !== queryKey;
@@ -45,6 +46,7 @@ export function JuegosPage() {
     setBusy(true); setActionError(''); setNotice('');
     try {
       await toggleGameAppStatus(item.id);
+      setNoticeTone(item.is_active ? 'negative' : 'positive');
       setNotice(`${item.title}: ${item.is_active ? 'desactivado' : 'activado'} correctamente.`);
       refresh();
     } catch (err) { setActionError(err instanceof Error ? err.message : 'No fue posible cambiar el estado.'); }
@@ -56,6 +58,7 @@ export function JuegosPage() {
     setBusy(true); setActionError(''); setNotice('');
     try {
       await deleteGameApp(deleting.id);
+      setNoticeTone('positive');
       setNotice(`${deleting.title} se eliminó del catálogo.`);
       setDeleting(null); refresh();
     } catch (err) { setActionError(err instanceof Error ? err.message : 'No fue posible eliminar el elemento.'); }
@@ -85,7 +88,7 @@ export function JuegosPage() {
         {(search || stateFilter || typeFilter !== 'all') && <button type="button" className={s.button} onClick={() => { setSearch(''); setStateFilter(''); setTypeFilter('all'); }}>Limpiar filtros</button>}
       </div>
     </section>
-    {notice && <p role="status" className={`${s.notice} tw:text-positive`}>{notice}</p>}
+    {notice && <p role="status" className={`${s.notice} ${noticeTone === 'negative' ? 'tw:text-negative' : 'tw:text-positive'}`}>{notice}</p>}
     {actionError && !deleting && <p role="alert" className={s.error}>{actionError}</p>}
     {error ? <div role="alert" className={s.error}><p>{error}</p><button type="button" className={`tw:mt-3 ${s.button}`} onClick={refresh}>Volver a intentar</button></div>
       : isLoading ? <div role="status" className={`${s.panel} tw:flex tw:items-center tw:justify-center tw:gap-3 tw:py-16`}><span aria-hidden="true" className="tw:size-5 tw:animate-spin tw:rounded-full tw:border-2 tw:border-solid tw:border-stroke tw:border-t-brand" />Cargando catálogo…</div>
@@ -93,7 +96,7 @@ export function JuegosPage() {
       : <section className={s.panel}><div className="tw:mb-5"><h3 className="tw:text-lg tw:font-bold">Catálogo</h3><p className={`tw:mt-1 ${s.muted}`}>{canManage ? 'Ver detalle muestra la ficha completa. Usa las acciones para editar o cambiar la disponibilidad.' : 'Abre el detalle para consultar la información de cada juego.'}</p></div>
         <GamesTable canManage={canManage} items={items} busy={busy} onToggle={item => void handleToggle(item)} onEdit={item => { setEditingItem(item); setShowModal(true); }} onDelete={item => { setActionError(''); setDeleting(item); }} onInspect={setInspecting} />
       </section>}
-    {canManage && showModal && <GameFormModal key={editingItem?.id ?? 'new'} editingItem={editingItem} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); setNotice(editingItem ? 'Cambios guardados correctamente.' : 'El nuevo elemento se creó inactivo. Puedes activarlo desde el catálogo.'); refresh(); }} />}
+    {canManage && showModal && <GameFormModal key={editingItem?.id ?? 'new'} editingItem={editingItem} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); setNoticeTone('positive'); setNotice(editingItem ? 'Cambios guardados correctamente.' : 'El nuevo elemento se creó inactivo. Puedes activarlo desde el catálogo.'); refresh(); }} />}
     {inspecting && <Modal title={inspecting.title} onClose={() => setInspecting(null)}>
       <div className="tw:space-y-6"><div className={s.actions}><span className={`${s.badge} ${inspecting.is_active ? 'tw:text-positive' : 'tw:text-muted'}`}>{inspecting.is_active ? 'Activo' : 'Inactivo'}</span><span className={s.badge}>{GAME_TYPE_LABELS[inspecting.item_type]}</span>{inspecting.featured && <span className={s.badge}>★ Destacado</span>}</div>
         <section><h3 className="tw:mb-2 tw:font-bold">Acerca de este juego</h3><p className="tw:whitespace-pre-wrap tw:break-words">{inspecting.description || 'No se ha añadido una descripción.'}</p></section>

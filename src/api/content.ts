@@ -106,6 +106,15 @@ export const fetchCandidates = (page: number) => editorialRequest<{ items: NewsC
 export const fetchEditorialJobs = () => editorialRequest<{ items: EditorialJob[] }>('jobs');
 export const fetchEditorialRuntime = () => editorialRequest<{ worker_enabled: boolean; gemini_ready: boolean; collection_enabled?: boolean; adaptation_enabled?: boolean }>('runtime');
 export const requestCollection = () => editorialRequest('collect', {});
+export interface NewsImportResult { candidates: number; duplicates: number; changed: number }
+export async function importNewsFile(file: File): Promise<NewsImportResult> {
+  if (file.size > 2 * 1024 * 1024) throw new Error('El archivo no puede superar 2 MB.');
+  let posts: unknown;
+  try { posts = JSON.parse((await file.text()).replace(/^\uFEFF/, '')); }
+  catch { throw new Error('No es un archivo JSON válido. Guarda la respuesta de la API de noticias, no la página HTML.'); }
+  if (!Array.isArray(posts) || !posts.length || posts.length > 100) throw new Error('El archivo debe contener entre 1 y 100 noticias.');
+  return editorialRequest<NewsImportResult>('candidates/import', posts);
+}
 export const requestAdaptation = (id: string) => editorialRequest(`candidates/${id}/adapt`, {});
 export const reviewCandidate = (id: string, action: string, note: string, source_hash: string) => editorialRequest(`candidates/${id}/review`, { action, note, source_hash });
 export const createCandidateDraft = (id: string, title: string, body: string) => editorialRequest<ContentItem>(`candidates/${id}/draft`, { title, body });

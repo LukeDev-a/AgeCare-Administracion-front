@@ -36,6 +36,140 @@ function mount(path, name, dependencies, props = {}, globals = {}) {
   return { tree, find: predicate => find(tree(), predicate), html: () => renderToStaticMarkup(tree()),
     async settle() { tree(); effects.splice(0).forEach(fn => fn()); await new Promise(setImmediate); } };
 }
+test('adaptación confirma envío, bloquea duplicados y distingue cola, cuota y propuesta lista', async () => {
+  const original = { id: 'candidate', title: 'Noticia de prueba', original_text: 'Contenido original por revisar', source_url: 'https://example.org',
+    rights_status: 'own', source_hash: 'hash', status: 'pending', item_id: null, adaptation: null };
+  const props = { candidate: original, onChanged() {}, onDraft() {}, onClose() {} };
+  let finish, fail, calls = 0;
+  const h = mount('src/pages/contenido/CandidateReview.tsx', 'CandidateReview', {
+    '../../api/content': { requestAdaptation: () => { calls++; return new Promise((resolve, reject) => { finish = resolve; fail = reject; }); } },
+    '../../lib/contentMeta': load('src/lib/contentMeta.ts'),
+  }, props);
+  const click = label => h.find(n => n.type === 'button' && n.props.children === label).props.onClick();
+  click('Continuar a adaptación →'); click('Adaptar con Gemini');
+  assert.equal(h.tree().props.busy, true);
+  assert.match(h.html(), /Enviando solicitud/);
+  finish(); await new Promise(setImmediate);
+  assert.equal(original.status, 'pending', 'GET todavía no ha actualizado las props');
+  assert.match(h.html(), /Adaptación solicitada · En cola/);
+  assert.equal(h.find(n => n.type === 'button' && n.props.children === 'Solicitud pendiente').props.disabled, true);
+  click('Solicitud pendiente'); assert.equal(calls, 1);
+  props.candidate = { ...original, status: 'waiting_quota' };
+  assert.match(h.html(), /Esperando cuota gratuita/);
+  assert.doesNotMatch(h.html(), /animate-spin/);
+  props.candidate = { ...original, status: 'adapted', adaptation: { title: 'Propuesta nueva', body: 'Texto adaptado', changes: 'Resumen' } };
+  assert.match(h.html(), /Propuesta lista para revisar/);
+  assert.doesNotMatch(h.html(), /Adaptación solicitada · En cola/);
+  click('Solicitar otra adaptación');
+  assert.doesNotMatch(h.html(), /Propuesta lista para revisar/, 'no presenta propuesta anterior como nueva mientras solicita otra');
+  fail(new Error('No se pudo solicitar')); await new Promise(setImmediate);
+  assert.equal(h.tree().props.error, 'No se pudo solicitar');
+  assert.equal(h.tree().props.busy, false);
+  assert.equal(h.find(n => n.type === 'button' && n.props.children === 'Solicitar otra adaptación').props.disabled, false);
+});
+
+test('revisión por pasos guarda procedencia solo al confirmar y conserva motivo ante fallo', async () => {
+  const candidate = { id: 'candidate', title: 'Noticia por revisar', original_text: 'Texto original de la noticia', source_url: 'https://example.org/noticia',
+    author: 'Redacción', rights_status: 'uncertain', source_hash: 'hash-original', status: 'pending', item_id: null, adaptation: null };
+  const calls = []; let changed = 0;
+  const h = mount('src/pages/contenido/CandidateReview.tsx', 'CandidateReview', {
+    '../../api/content': { reviewCandidate: async (...args) => { calls.push(args); if (calls.length === 1) throw new Error('No se pudo guardar'); } },
+    '../../lib/contentMeta': load('src/lib/contentMeta.ts'),
+  }, { candidate, onChanged() { changed++; }, onDraft() {}, onClose() {} });
+  const button = label => h.find(n => n.type === 'button' && n.props.children === label);
+  assert.equal(h.find(n => n.type === 'form'), undefined, 'solo se muestra procedencia al entrar');
+  h.find(n => n.type === 'input' && n.props.value === 'own').props.onChange();
+  assert.equal(calls.length, 0, 'seleccionar la procedencia no guarda automáticamente');
+  h.find(n => n.type === 'textarea').props.onChange({ target: { value: 'Revisé los créditos y condiciones' } });
+  button('Guardar procedencia').props.onClick();
+  assert.equal(h.tree().props.busy, true);
+  await new Promise(setImmediate);
+  assert.equal(h.tree().props.error, 'No se pudo guardar');
+  assert.equal(h.find(n => n.type === 'textarea').props.value, 'Revisé los créditos y condiciones');
+  button('Guardar procedencia').props.onClick();
+  await new Promise(setImmediate);
+  assert.equal(calls[1][1], 'own'); assert.equal(calls[1][3], 'hash-original');
+  assert.equal(changed, 1); assert.equal(h.find(n => n.type === 'textarea').props.value, '');
+});
+
+test('revisión mantiene texto al navegar, confirma reemplazo por IA y conserva borrador ante error', async () => {
+  const candidate = { id: 'candidate', title: 'Título original', original_text: 'Texto original de la noticia', source_url: 'https://example.org/noticia',
+    author: 'Redacción', rights_status: 'uncertain', source_hash: 'hash-original', status: 'adapted', item_id: null,
+    adaptation: { title: 'Título adaptado', body: 'Texto propuesto para el borrador', unsuitable: true, changes: 'Resumen' } };
+  let refreshes = 0, saves = 0, opened;
+  const h = mount('src/pages/contenido/CandidateReview.tsx', 'CandidateReview', {
+    '../../api/content': { createCandidateDraft: async (id, title, body) => {
+      assert.equal(title, 'Título adaptado'); assert.equal(body, candidate.adaptation.body);
+      if (++saves === 1) throw new Error('No se pudo crear'); return { id: 'draft', title };
+    } }, '../../lib/contentMeta': load('src/lib/contentMeta.ts'),
+  }, { candidate, onChanged() { refreshes++; }, onDraft(id) { opened = id; }, onClose() {} });
+  const click = label => h.find(n => n.type === 'button' && n.props.children === label).props.onClick();
+  click('Continuar a adaptación →');
+  assert.match(h.html(), /La propuesta contiene advertencias/);
+  click('Actualizar propuesta'); assert.equal(refreshes, 1);
+  click('Preparar borrador manualmente →');
+  assert.equal(h.find(n => n.type === 'textarea').props.value, candidate.original_text, 'IA no sustituye texto sin elegirla');
+  h.find(n => n.type === 'textarea').props.onChange({ target: { value: 'Edición manual que no debe perderse' } });
+  assert.equal(h.tree().props.dirty, true);
+  h.find(n => n.type === 'button' && Array.isArray(n.props.children) && n.props.children[1] === 'Adaptación').props.onClick();
+  click('Usar propuesta y revisar borrador →');
+  assert.match(h.html(), /reemplazará el título y el texto/);
+  click('Conservar mi texto');
+  click('Preparar borrador manualmente →');
+  assert.equal(h.find(n => n.type === 'textarea').props.value, 'Edición manual que no debe perderse');
+  h.find(n => n.type === 'button' && Array.isArray(n.props.children) && n.props.children[1] === 'Adaptación').props.onClick();
+  click('Usar propuesta y revisar borrador →'); click('Reemplazar con la propuesta');
+  h.find(n => n.type === 'form').props.onSubmit({ preventDefault() {} });
+  await new Promise(setImmediate);
+  assert.equal(h.tree().props.error, 'No se pudo crear');
+  assert.equal(h.find(n => n.type === 'textarea').props.value, candidate.adaptation.body);
+  h.find(n => n.type === 'form').props.onSubmit({ preventDefault() {} });
+  await new Promise(setImmediate);
+  assert.equal(h.tree().props.dirty, false);
+  assert.equal(h.find(n => n.type === 'form'), undefined);
+  click('Ir al borrador →'); assert.equal(opened, 'draft');
+});
+
+test('importar JSON valida tamaño/formato y conserva la sesión del cliente', async () => {
+  const calls = [];
+  const api = load('src/api/content.ts', { './client': { apiFetch: async (path, options) => {
+    calls.push({ path, options }); return new Response(JSON.stringify({ candidates: 1, duplicates: 0, changed: 0 }));
+  } } });
+  const file = text => ({ size: text.length, text: async () => text });
+  await assert.rejects(api.importNewsFile(file('<html>No JSON</html>')), /JSON válido/);
+  await assert.rejects(api.importNewsFile(file('[]')), /entre 1 y 100/);
+  await assert.rejects(api.importNewsFile({ size: 3 * 1024 * 1024 }), /2 MB/);
+  assert.equal(calls.length, 0);
+  const news = [{ id: 123, title: { rendered: 'Una noticia' } }];
+  await api.importNewsFile(file('\uFEFF' + JSON.stringify(news)));
+  assert.equal(calls[0].path, '/content/candidates/import');
+  assert.equal(calls[0].options.method, 'POST');
+  assert.deepEqual(JSON.parse(calls[0].options.body), news);
+});
+
+test('modal de importación conserva archivo ante fallo y solo informa éxito tras respuesta', async () => {
+  let calls = 0, imported = 0;
+  const h = mount('src/pages/contenido/ImportNewsModal.tsx', 'ImportNewsModal', {
+    '../../api/content': { importNewsFile: async file => {
+      assert.equal(file.name, 'noticias.json');
+      if (++calls === 1) throw new Error('Archivo rechazado');
+      return { candidates: 2, duplicates: 1, changed: 0 };
+    } },
+  }, { onClose() {}, onImported(result) { assert.equal(result.candidates, 2); imported++; } });
+  const button = () => h.find(n => n.type === 'button' && n.props.children === 'Importar noticias');
+  assert.equal(button().props.disabled, true);
+  h.find(n => n.type === 'input').props.onChange({ target: { files: [{ name: 'noticias.json' }] } });
+  assert.equal(h.tree().props.dirty, true);
+  button().props.onClick();
+  assert.equal(h.tree().props.busy, true);
+  await new Promise(setImmediate);
+  assert.match(h.html(), /Archivo rechazado/); assert.equal(imported, 0);
+  assert.equal(button().props.disabled, false);
+  button().props.onClick();
+  await new Promise(setImmediate);
+  assert.equal(imported, 1);
+});
+
 test('contenido consulta páginas reales y aprueba explícitamente la versión revisada', async () => {
   const calls = [];
   const api = load('src/api/content.ts', { './client': { apiFetch: async (path, options) => {

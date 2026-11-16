@@ -38,6 +38,17 @@ function mount(path, name, dependencies, props = {}) {
 const item = { id: 'review', type: 'review', status: 'pending', content: { text: '<script>Texto</script>', rating: 0 },
   is_safety: true, author: { name: 'Autora' }, created_at: '2026-10-27' };
 
+test('vista previa de la cola escapa texto y nunca revela fotos o mensajes protegidos', () => {
+  const { ModerationTable } = load('src/pages/moderacion/ModerationTable.tsx', common);
+  const html = renderToStaticMarkup(React.createElement(ModerationTable, { items: [item,
+    { ...item, id: 'private-photo', type: 'photo', content_available: true, content: { text: 'FOTO_PRIVADA_NO_MOSTRAR' } },
+    { ...item, id: 'private-message', type: 'chat_message', content: { text: 'MENSAJE_PRIVADO_NO_MOSTRAR' } },
+  ], selectedId: null, onSelect() {} }));
+  assert.match(html, /&lt;script&gt;Texto&lt;\/script&gt;/);
+  assert.doesNotMatch(html, /FOTO_PRIVADA_NO_MOSTRAR|MENSAJE_PRIVADO_NO_MOSTRAR|<script>/);
+  assert.match(html, /Acceso al contenido no disponible/);
+});
+
 test('moderación usa página y motivos/notas reales sin textos automáticos', async () => {
   const calls = [];
   const api = load('src/api/moderation.ts', { './client': { apiFetch: async (path, options) => {

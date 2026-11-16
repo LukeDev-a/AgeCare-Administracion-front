@@ -30,13 +30,13 @@ const FIELDS: Record<string, string> = {
   explicit_cancellation: 'Contar las cancelaciones como bajas', inactivity_days: 'Días sin actividad para considerar una baja',
   api_core: 'API principal',
   news_collection_enabled: 'Permitir recopilación de noticias', news_adaptation_enabled: 'Permitir adaptación con Gemini',
-  notice_enabled: 'Mostrar aviso en la consola', notice_title: 'Título del aviso', notice_body: 'Mensaje del aviso',
+  notice_enabled: 'Estado del aviso', notice_title: 'Título del aviso', notice_body: 'Mensaje del aviso',
 };
 export const fieldName = (key: string, schema: ValueSchema) => FIELDS[key] || schema.title || readableName(key);
 export const fieldHelp = (key: string) => ({
-  news_collection_enabled: 'Afecta a nuevas solicitudes manuales y a la recopilación diaria. Las noticias guardadas se conservan.',
-  news_adaptation_enabled: 'Afecta a nuevas adaptaciones manuales y automáticas. Los borradores y trabajos ya aceptados se conservan.',
-  notice_enabled: 'Si eliges Sí, debes completar el título y el mensaje. El aviso lo verán las cuentas autenticadas de la consola.',
+  news_collection_enabled: 'Pausada impide nuevas recopilaciones e importaciones JSON. Las noticias guardadas se conservan.',
+  news_adaptation_enabled: 'Pausada impide nuevas adaptaciones. Los trabajos aceptados continúan y los borradores se conservan.',
+  notice_enabled: 'Publicado muestra el aviso a las cuentas autenticadas. Oculto lo retira de la pantalla y conserva el título y el mensaje. Para publicarlo debes completar ambos campos.',
   notice_title: 'Hasta 120 caracteres. Usa un título breve y comprensible.',
   notice_body: 'Hasta 1000 caracteres, en texto plano. No incluyas datos personales, contraseñas ni claves.',
   p95_ms: 'El 95 % de las respuestas debería completarse dentro de este tiempo. 1000 milisegundos equivalen a 1 segundo.',

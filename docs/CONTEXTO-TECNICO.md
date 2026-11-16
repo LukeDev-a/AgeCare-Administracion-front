@@ -1,5 +1,61 @@
 # Mapa del frontend principal
 
+## Configuración con tarjetas y modal — 15 de noviembre de 2026
+
+Usuario pidió mejorar Configuración. SettingsPage ahora muestra buscador y tarjetas por propósito con descripciones breves/versión/fecha, sin seleccionar un parámetro automáticamente. Ver y modificar abre SettingEditor en Modal compartido: cierre explícito, dirty incluye valor inválido o motivo sin guardar, busy durante guardado/consulta. Ya no usa confirm del navegador al cambiar opción ni al cargar la versión vigente.
+
+Editor separa ajustar valores de explicar cambio. Texto del motivo ahora ¿Por qué haces este cambio?, aclara que es para auditoría y no un aviso público. Campos Tailwind en settingsStyles.ts, nombres humanos, límites sin tipo técnico repetido; esquema/ID/valor guardado/reglas en desplegables. Valores bool siguen enviándose como booleanos: funciones Activada/Pausada y avisos Publicado/Oculto, con efecto de ocultar explicado sin borrar título/mensaje. Recopilación pausada también impide importación JSON. Cero/falso, JSON de estructuras no planas, valor completo/version/change_note5–500 y avisos de éxito/error conservados.
+
+VERSION_CONFLICT conserva valores/motivo y bloquea guardar. Consulta latest, muestra su versión/valor y exige confirmación interna antes de reemplazar borrador; cancelar mantiene edición. No reintento ni mezcla automática. Precios históricos, permisos admin, caché y propagación backend sin cambios. Guardar aviso conserva evento agecare-settings-changed.
+
+159 pruebas frontend completas aprobadas; tras ajustes finales de textos,7 dirigidas configuración/runtime y build aprobados; lint dirigido correcto. Regresión ampliada cubre consulta/confirmación/cancelación/descarte de conflicto sin repetir PUT. Navegador con API ficticia verificó tarjetas/búsqueda, aviso false→true, cierre dirty, precios0 en conflicto, recuperación explícita y funciones false, ambos temas y390px sin desborde. Evidencia outputs/configuracion-ui-review; navegador/servidor temporales cerrados. No parámetros, datos ni cuentas reales modificados. Solo frontend: recargar local, subir frontend para Vercel, sin Docker ni migración.
+
+## Moderación: ejemplos y segunda mejora visual — 15 de noviembre de 2026
+
+Usuario pidió datos para probar e interfaz más clara, y autorizó local+Neon. Se añadieron60 registros por destino sin modificar2 previos:36 pendientes/13 aprobados/13 rechazados. No requieren despliegue para verlos; refrescar cola. Histórico ficticio no prueba decisiones reales. Procedimiento y límites en docs/moderacion-demo.md del backend.
+
+Interfaz con guía breve, títulos separados por pendiente/historial, filtros inmediatos y botón Ver todos los pendientes, carga visual/reintento. Tabla muestra extracto seguro de reseña/perfil y distingue contenido no accesible. Modal presenta contenido/contexto a un lado y decisión/histórico al otro en escritorio, apilados en móvil. Nota con contador y confirmación conservadas; requiere nota para Otro motivo, no notifica al autor ni cambia contenido externo. Nunca muestra extractos de fotos/mensajes aunque content_available=true.
+
+159 pruebas frontend completas y17 backend dirigidas de contrato/carga, build/lint aprobados. Regresión específica de privacidad de extractos. Navegador aislado con API ficticia comprobó decisiones, fallos/reintento, nota preservada, histórico, fotos protegidas, ambos temas y390px; evidencia actualizada outputs/moderacion-ui-review. Servicios temporales cerrados. No decisiones efectuadas sobre datos habituales; revisión manual del usuario pendiente. Solo frontend para publicar la interfaz; no migraciones/reinicio API.
+
+## RF13.5 creación de artículos — 15 de noviembre de 2026
+
+Usuario pidió aplicar nombre3–160, categoría2–60, proveedor2–120, URL externa obligatoria y precio/imagen opcionales. Verificado que ProductCreateIn/PatchIn y campos HTML ya aplicaban límites y HTTPS. NewProductForm ahora explicita obligatoriedad/límites, recorta extremos y valida texto/enlace antes del POST con mensajes claros. Precio vacío e imagen vacía se omiten; precio0 se conserva. Imagen sigue como enlace opcional a recurso alojado; selección/subida de archivos fue propuesta, no implementada ni autorizada con almacenamiento definido. Sin cambios backend ni migraciones.14 pruebas frontend dirigidas y19 backend existentes de contrato aprobadas en memoria, build/lint correctos. No productos reales creados; revisión visual pendiente. Solo recargar/subir frontend para estos cambios.
+
+## Notas internas de cuidadoras — 15 de noviembre de 2026
+
+CaregiverDetail añade una nota de seguimiento editable por admin/editor, separada del motivo de suspensión. Inicializa desde internal_note, admite hasta2000 caracteres y permite vaciar guardando texto vacío. Guardar nota hace PATCH solo internal_note, utiliza respuesta canónica para actualizar referencia y limpiar dirty, sin aprobar/suspender/verificar. Fallo conserva texto, Modal protege salida si hay cambios y bloquea cierre/envíos concurrentes. Moderator no muestra el campo ni contenido aunque aparezca accidentalmente en props.
+
+GET marketplace/caregivers ahora entrega la nota solo a admin/editor; moderator recibe null. No nueva ruta ni migración: usa columna/schema/PATCH existentes. Motivo de suspensión mantiene10–1000 caracteres y función propia, con ejemplo y explicación visible; no se envían avisos.13 pruebas frontend dirigidas y9 backend de cuidadoras/auditoría aprobadas, build/lint correctos. No perfiles ni datos reales modificados; revisión visual pendiente. Reconstruir API local y recargar consola. Público: subir backend primero y después frontend para recuperar notas anteriores correctamente.
+
+## Certificaciones de cuidadoras visibles — 15 de noviembre de 2026
+
+CaregiverDetail separa cantidad registrada de certificaciones verificadas. API añade certifications_verified desde el booleano existente en GET/PATCH CaregiverOut; no migración ni verificación manual nueva. Frontend distingue true/false/dato ausente (API anterior) y deshabilita aprobación si no existe true explícito, con ayuda que explica que el sistema de origen debe informar verificación. Conserva suspensión y autorización backend; cantidad positiva no acredita validez.11 pruebas frontend dirigidas de productos/permisos y1 backend de contrato/bloqueo aprobadas, build/lint correctos. Sin datos reales alterados; revisión visual habitual pendiente. Local reconstruir API y recargar frontend; público subir ambos repositorios.
+
+## Color de disponibilidad de juegos — 15 de noviembre de 2026
+
+Aviso de JuegosPage usa color de tema positive al activar y negative al desactivar, por petición del usuario. Otros guardados conservan su tono positivo; sin cambiar permisos, API ni estados. Solo frontend.
+
+## Señal visible de adaptación solicitada — 15 de noviembre de 2026
+
+CandidateReview distingue Enviando solicitud (durante POST), Adaptación solicitada · En cola (aceptada/estado queued), Esperando cuota gratuita y Propuesta lista para revisar. Panel con spinner solo para envío/cola y pausa para cuota; nunca afirma que Gemini ya está ejecutando una tarea en cola. Confirmación local inmediata hasta recibir GET actualizado, botón pendiente bloqueado y guardia ante repetición. No presenta propuesta anterior como resultado nuevo al pedir otra. Error conserva reintento. Continúa consulta manual mediante Actualizar propuesta; no añadir promesa de actualización automática ni tiempo estimado. Sin cambios backend/API/IA real.
+
+21 pruebas dirigidas contenido/modal, build y lint aprobados; nueva regresión de aceptación antes de GET, duplicados, cuota, éxito y fallo. Navegador ficticio aprobado y captura outputs/noticia-ui-review/adaptacion-en-cola.png. No se solicitó Gemini ni se cambiaron datos reales. Recargar frontend local o subir frontend para Vercel, sin reiniciar API.
+
+## Revisión de noticias por pasos — 15 de noviembre de 2026
+
+Por solicitud del usuario, extraído CandidateReview.tsx de NewsCandidates. Modal muestra solo un paso a la vez: Procedencia, Adaptación y Borrador. Ayuda y original plegados; tarjetas de procedencia con selección visible y botón Guardar procedencia (elegir radio no guarda). Motivo5–2000 y source_hash originales conservados. Descartar/mantener y último motivo siguen disponibles en desplegable. Estado guardado y cambio del original visibles. Avanzar no aprueba ni modifica derechos; material de terceros/incierto conserva bloqueo de aprobación en backend.
+
+Paso Adaptación tiene Actualizar propuesta dentro del modal, sin obligar a cerrarlo. Copiar propuesta es explícito y conduce a Borrador; reemplazar texto editado exige confirmación. Formulario parte del original, no copia silenciosamente una adaptación preexistente. Estado local persiste al navegar/consultar. Crear borrador no publica y, tras éxito, muestra Ir al borrador; también funciona para candidatos con item_id previo. Error en encabezado conserva edición/decisión, busy impide navegación/cierre. No cambios backend/API/requisitos/datos reales, no consultas Gemini reales. Quitada confirmación nativa redundante al seleccionar fila (el diálogo ya bloquea interacción con listado).
+
+153 pruebas frontend completas, build y lint dirigido aprobados. Regresiones: selección sin guardado implícito, motivo conservado ante error, source_hash, navegación conservando texto, sustitución IA confirmada y fallo/reintento de borrador. Navegador con noticias/API ficticias verificó guardado de procedencia, cola/propuesta, copia, protección al cerrar, reintento y enlace al borrador, claro/oscuro y390px sin desbordes. Evidencia outputs/noticia-ui-review; servicios temporales cerrados. No es ejecución formal de matriz de pruebas; revisión habitual del usuario pendiente. Basta recargar local; para Vercel subir frontend, sin reconstruir API.
+
+## Importación manual de noticias — 15 de noviembre de 2026
+
+NewsCandidates añade Importar archivo JSON y el Modal ImportNewsModal con instrucciones de descarga desde API del medio. Servicio importNewsFile usa apiFetch, comprueba2MiB/JSON/array1–100, conserva archivo/error para reintento y bloquea cierre durante envío. POST content/candidates/import devuelve cantidades para aviso y refresca página1 sin publicar ni solicitar IA. Backend vuelve a validar todo y exige admin/editor/news_collection_enabled. Nuevas quedan pendientes y con procedencia incierta; existentes idénticas no se duplican, originales cambiados requieren revisión. Error PROVIDER_CONFIG_ERROR de collect ahora apunta al acceso del medio, no a Gemini. Auditoría añade opción content.news_import.
+
+151 pruebas frontend completas y36 backend dirigidas aprobadas, build/lint correctos. Sin uso de cuentas/bases habituales ni importaciones reales; revisión visual del usuario pendiente. No requiere migración; publicar ambos repositorios. Guía operativa en docs/contenido-editorial.md del backend.
+
 ## Mensaje de audio después de editar — 15 de noviembre de 2026
 
 ContentDetail prioriza aprobación de texto frente al estado de cola: no muestra preparación, cuota, audio listo ni reproductor de una versión anterior mientras título/cuerpo tengan cambios o la versión guardada no esté aprobada. Indica guardar y aprobar, o aprobar si ya se guardó. No confunde cambios de etiquetas con invalidación del texto. Protege también respuestas legadas queued sin aprobación. Backend PATCH deja audio pending tras invalidar en lugar de encolarlo antes de aprobar; el POST approve conserva la solicitud TTS.16 pruebas frontend dirigidas,12 backend en SQLite en memoria con proveedores simulados, build y lint aprobados. Sin consumo Gemini, cambios de bases reales ni despliegues. Usuario debe publicar frontend y backend para aplicar ambos ajustes.

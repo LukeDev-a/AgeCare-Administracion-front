@@ -6,7 +6,8 @@ const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 function load(path, dependencies = {}) {
-  const scope = { exports: {}, URLSearchParams, require: name => dependencies[name] ?? require(name) };
+  const scope = { exports: {}, URLSearchParams, require: name => dependencies[name]
+    ?? (name === './settingsStyles' ? load('src/pages/configuracion/settingsStyles.ts') : name === '../../components/Modal' ? load('src/components/Modal.tsx') : require(name)) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, scope);
@@ -47,6 +48,7 @@ test('editor de campos mantiene cero, falso y límites de validación', () => {
 });
 
 test('un conflicto conserva el borrador y nunca reintenta con una versión nueva automáticamente', async () => {
+  let reloaded = null;
   const api = load('src/api/settings.ts', { './client': { apiFetch: () => {} } });
   const meta = load('src/lib/settingsMeta.ts');
   const states = [];
@@ -61,13 +63,13 @@ test('un conflicto conserva el borrador y nunca reintenta con una versión nueva
     } },
     '../../lib/settingsMeta': meta,
     './SettingValueFields': { SettingValueFields: Fields },
-    '../../api/settings': { ...api, updateSetting: async (key, input) => {
+    '../../api/settings': { ...api, fetchSettings: async () => [{ ...setting, value: { gold: 3 }, version: 6 }], updateSetting: async (key, input) => {
       calls.push({ key, input }); throw new api.SettingsError('Modificado por otro admin', 'VERSION_CONFLICT');
     } },
   });
   const setting = { key: 'plan_prices', description: 'Precios', value: { gold: 1 },
     schema: { type: 'object', properties: { gold: { type: 'integer' } } }, version: 5, updated_at: null, updated_by: null };
-  function render() { cursor = 0; return SettingEditor({ setting, onSaved: () => assert.fail('No debe guardarse en conflicto') }); }
+  function render() { cursor = 0; return SettingEditor({ setting, onSaved: value => { reloaded = value; } }); }
   function nodes(element) {
     if (!element || typeof element !== 'object') return [];
     if (Array.isArray(element)) return element.flatMap(nodes);
@@ -86,4 +88,21 @@ test('un conflicto conserva el borrador y nunca reintenta con una versión nueva
   await tree.find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].input.version, 5);
+  assert.equal(reloaded, null);
+  tree.find(node => node.type === 'button' && node.props.children === 'Consultar versión actual').props.onClick();
+  await new Promise(setImmediate);
+  tree = nodes(render());
+  tree.find(node => node.type === 'button' && node.props.children === 'Cargar versión actual y descartar borrador').props.onClick();
+  tree = nodes(render());
+  assert.equal(tree.find(node => node.type === Fields).props.value.gold, 9);
+  tree.find(node => node.type === 'button' && node.props.children === 'Conservar mi borrador').props.onClick();
+  tree = nodes(render());
+  assert.equal(tree.find(node => node.type === 'textarea').props.value, 'Cambio operativo');
+  tree.find(node => node.type === 'button' && node.props.children === 'Cargar versión actual y descartar borrador').props.onClick();
+  tree = nodes(render());
+  tree.find(node => node.type === 'button' && node.props.children === 'Descartar y cargar versión actual').props.onClick();
+  tree = nodes(render());
+  assert.equal(tree.find(node => node.type === Fields).props.value.gold, 3);
+  assert.equal(tree.find(node => node.type === 'textarea').props.value, '');
+  assert.equal(reloaded.version, 6); assert.equal(calls.length, 1);
 });

@@ -28,6 +28,7 @@ AUDIT_ACTION_OPTIONS.push(
   ['content.candidate_review', 'Revisó una noticia recopilada'],
   ['content.adaptation_request', 'Solicitó adaptar una noticia'],
   ['content.collection_request', 'Solicitó recopilar noticias'],
+  ['content.news_import', 'Importó noticias desde un archivo'],
   ['staff.invitation_accept', 'Aceptó la invitación a la consola'],
   ['staff.invitation_resend', 'Reenvió una invitación'],
   ['staff.invitation_cancel', 'Canceló una invitación'],
