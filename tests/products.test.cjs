@@ -7,6 +7,7 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 function load(path, dependencies = {}) {
   const scope = { exports: {}, Error, URL, URLSearchParams, require: name => dependencies[name]
+    ?? require('./helpers/filter-hooks.cjs').filterDependency(name, dependencies.react)
     ?? (name === './marketStyles' ? load('src/pages/marketplace/marketStyles.ts') : name === '../../components/Modal' ? load('src/components/Modal.tsx') : require(name)) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
@@ -26,7 +27,7 @@ function find(node, predicate) {
 function mount(path, name, dependencies, props = {}) {
   const states = [], effects = [], previous = [], cleanups = [];
   let si = 0, ei = 0;
-  const hooks = { ...React, useState(initial) { const i = si++; if (!(i in states)) states[i] = initial;
+  const hooks = { ...React, useState(initial) { const i = si++; if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
     return [states[i], value => { states[i] = typeof value === 'function' ? value(states[i]) : value; }]; },
     useEffect(fn, values) { const i = ei++; if (!previous[i] || values.some((value, j) => value !== previous[i][j])) {
       previous[i] = values; effects.push(() => { cleanups[i]?.(); cleanups[i] = fn(); });
@@ -123,7 +124,7 @@ test('listado aplica filtros combinados, pagina y descarta respuesta anterior', 
   await panel.settle();
   panel.find(node => node.props?.['aria-label'] === 'Filtrar por categoría').props.onChange({ target: { value: 'Bienestar' } });
   panel.find(node => node.props?.['aria-label'] === 'Buscar productos').props.onChange({ target: { value: 'Proveedor' } });
-  panel.find(node => node.type === 'button' && node.props.children === 'Buscar').props.onClick();
+  await new Promise(resolve => setTimeout(resolve, 430));
   await panel.settle();
   assert.equal(requests.at(-1).params.category, 'Bienestar'); assert.equal(requests.at(-1).params.search, 'Proveedor');
   requests.at(-1).resolve({ items: [], page: 1, page_size: 25, total: 30 }); await new Promise(setImmediate);

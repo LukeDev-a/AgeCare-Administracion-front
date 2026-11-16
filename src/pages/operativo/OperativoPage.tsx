@@ -70,6 +70,7 @@ export function OperativoPage() {
     <section hidden={section !== 'latency'} aria-label="Tiempos de respuesta" aria-busy={!latency && !latencyState.error} className={panel}>
       <h2 className="tw:text-xl tw:font-bold">Tiempos de respuesta de los servicios</h2>
       <p className="tw:mb-5 tw:mt-2 tw:text-muted">Compara cuánto tarda cada servicio. Un tiempo menor representa una respuesta más rápida para esa medición.</p>
+      <button className="theme-toggle tw:min-h-11" type="button" onClick={() => { setWindow('1h'); setSelected(OPS_COMPONENTS.map(([key]) => key).filter(key => key !== 'push' && key !== 'ai_assistant')); }}>Restablecer filtros</button>
       <label className="tw:grid tw:max-w-sm tw:gap-2 tw:font-semibold">Período de comparación <select className={selectStyle} value={window} onChange={event => setWindow(event.target.value as OpsWindow)}>
         <option value="1h">Última hora</option><option value="24h">Últimas 24 horas</option><option value="7d">Últimos 7 días</option>
       </select></label>

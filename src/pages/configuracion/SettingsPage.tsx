@@ -41,12 +41,13 @@ export function SettingsPage() {
         <input className={s.field} type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Por ejemplo: planes, noticias o aviso" />
       </label>
       <button type="button" className={s.button} disabled={loading} onClick={reload}>Actualizar opciones</button>
+      <button type="button" className={s.button} onClick={() => setQuery('')}>Restablecer filtros</button>
     </div>
     {loading ? <div className={`${s.panel} tw:flex tw:items-center tw:justify-center tw:gap-3 tw:py-14`} role="status"><span aria-hidden="true" className="tw:size-5 tw:animate-spin tw:rounded-full tw:border-2 tw:border-solid tw:border-stroke tw:border-t-brand" />Cargando configuración…</div>
       : error ? <div className={s.error} role="alert"><p>{error}</p><button type="button" className={s.button} onClick={reload}>Reintentar</button></div>
         : settings.length === 0 ? <div className={s.panel}>No hay parámetros de configuración disponibles.</div>
           : <>
-            <p className={s.muted}>{visible.length} opciones disponibles{query && <button type="button" className="tw:ml-4 tw:cursor-pointer tw:bg-transparent tw:font-semibold tw:text-brand-ink tw:underline" onClick={() => setQuery('')}>Limpiar búsqueda</button>}</p>
+            <p className={s.muted}>{visible.length} opciones disponibles</p>
             <div className="tw:grid tw:gap-5 tw:md:grid-cols-2 tw:xl:grid-cols-3">
               {visible.map(setting => {
                 const [group, summary] = summaries[setting.key] || [setting.key.startsWith('ops_thresholds.') ? 'Estado operativo' : 'Otros parámetros', settingDescription(setting)];

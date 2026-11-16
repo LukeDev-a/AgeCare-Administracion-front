@@ -7,7 +7,10 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 class FormValues { constructor(values) { this.values = values; } get(name) { return this.values[name]; } }
 function load(path, dependencies = {}) {
-  const scope = { exports: {}, Error, FormData: FormValues, require: name => dependencies[name] ?? require(name) };
+  const scope = { exports: {}, Error, FormData: FormValues, require: name => dependencies[name]
+    ?? (name === './legalStyles' ? load('src/pages/legales/legalStyles.ts')
+      : name === '../../components/Modal' ? { Modal: ({ children, error }) => React.createElement('div', null, error, children) }
+      : name === './LegalVersionDetail' ? { LegalVersionDetail: () => null } : require(name)) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, scope);
@@ -73,7 +76,7 @@ test('formulario conserva borrador ante error y muestra fecha recomendada del ba
   assert.match(form.html(), /NOTICE_PERIOD/); assert.equal(saved, 0); assert.equal(resets, 0);
 });
 
-test('publicar muestra el resultado consultado sin convertir futura en vigente; texto escapado', async () => {
+test('publicar exige confirmación, conserva errores y consulta estado futuro sin convertirlo en vigente', async () => {
   let published = false;
   const calls = [];
   const page = mount('src/pages/legales/LegalPage.tsx', 'LegalPage', {
@@ -82,9 +85,24 @@ test('publicar muestra el resultado consultado sin convertir futura en vigente; 
     './LegalDraftForm': { LegalDraftForm: () => null },
   });
   await page.settle();
-  page.find(node => node.type === 'button' && node.props.children === '1.1').props.onClick();
-  assert.doesNotMatch(page.html(), /<script>/); assert.match(page.html(), /Texto revisable/);
-  await page.find(node => node.type === 'button' && node.props.children === 'Publicar versión 1.1').props.onClick();
+  page.find(node => node.type === 'button' && node.props['aria-label'] === 'Revisar Términos de servicio versión 1.1').props.onClick();
+  let attempts = 0;
+  const detail = mount('src/pages/legales/LegalVersionDetail.tsx', 'LegalVersionDetail', { '../../api/legal': {
+    publishLegalVersion: async id => { attempts++; if (attempts === 1) throw new Error('Fecha insuficiente'); calls.push(id); published = true; },
+  } }, { version: draft, onClose() {}, onPublished: () => {
+    page.find(node => node.props.version?.version_id === 'new').props.onPublished();
+  } });
+  assert.doesNotMatch(detail.html(), /<script>/); assert.match(detail.html(), /Texto revisable/);
+  detail.find(node => node.type === 'button' && node.props.children === 'Publicar versión 1.1').props.onClick();
+  assert.equal(attempts, 0);
+  assert.match(detail.html(), /Publicar no adelanta esa fecha/);
+  detail.find(node => node.type === 'button' && node.props.children === 'Volver a revisar').props.onClick();
+  assert.equal(attempts, 0);
+  detail.find(node => node.type === 'button' && node.props.children === 'Publicar versión 1.1').props.onClick();
+  detail.find(node => node.type === 'button' && node.props.children === 'Confirmar publicación').props.onClick();
+  await new Promise(setImmediate);
+  assert.match(detail.html(), /Fecha insuficiente/); assert.match(detail.html(), /Confirmar publicación/);
+  detail.find(node => node.type === 'button' && node.props.children === 'Confirmar publicación').props.onClick();
   await new Promise(setImmediate); await page.settle();
   assert.deepEqual(calls, ['new']); assert.match(page.html(), /Versión vigente: 1.0/);
   assert.match(page.html(), /Publicada · vigencia futura/); assert.doesNotMatch(page.html(), /Publicar versión 1.1/);

@@ -8,6 +8,7 @@ const { renderToStaticMarkup } = require('react-dom/server');
 class FormValues { constructor(values) { this.values = values; } get(name) { return this.values[name]; } }
 function load(path, dependencies = {}) {
   const scope = { exports: {}, Error, URLSearchParams, FormData: FormValues, require: name => dependencies[name]
+    ?? require('./helpers/filter-hooks.cjs').filterDependency(name, dependencies.react)
     ?? (name === './ticketStyles' ? load('src/pages/tickets/ticketStyles.ts') : name === '../../components/Modal' ? load('src/components/Modal.tsx') : require(name)) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
@@ -29,7 +30,7 @@ function mount(path, name, dependencies, props = {}) {
   const states = [], effects = [], previous = [], cleanups = [];
   let si = 0, ei = 0;
   const hooks = { ...React,
-    useState(initial) { const i = si++; if (!(i in states)) states[i] = initial;
+    useState(initial) { const i = si++; if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
       return [states[i], value => { states[i] = typeof value === 'function' ? value(states[i]) : value; }]; },
     useEffect(fn, values) { const i = ei++; if (!previous[i] || values.some((value, j) => value !== previous[i][j])) {
       previous[i] = values; effects.push(() => { cleanups[i]?.(); cleanups[i] = fn(); });

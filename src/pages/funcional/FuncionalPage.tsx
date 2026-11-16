@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useAutoFilters } from '../../hooks/useAutoFilters';
+import { useCallback, useEffect, useState } from 'react';
 import { fetchFeatureAdoption, fetchFeatureAlerts, fetchTopFeatures } from '../../api/features';
 import { FEATURE_ROLE_COLORS, featureRoleName } from '../../lib/featureRoleMeta';
 import { percent } from '../../lib/format';
@@ -24,7 +25,8 @@ export function FuncionalPage() {
   const [section, setSection] = useState('comparison');
   const [days, setDays] = useState<number>(30);
   const [limit, setLimit] = useState(1);
-  const [threshold, setThreshold] = useState(.15);
+  const thresholdFilter = useAutoFilters({ value: '15' }, { delayedKeys: ['value'], validate: row => row.value.trim() && Number.isFinite(Number(row.value)) && Number(row.value) >= 1 && Number(row.value) <= 50 ? '' : 'Introduce un porcentaje entre 1 y 50.' });
+  const threshold = Number(thresholdFilter.filters.value) / 100;
   const [reload, setReload] = useState(0);
   const adoptionLoad = useCallback(() => fetchFeatureAdoption(days), [days]);
   const topLoad = useCallback(() => fetchTopFeatures(days, limit), [days, limit]);
@@ -33,11 +35,6 @@ export function FuncionalPage() {
   const topState = useRemote(`top:${days}:${limit}:${reload}`, topLoad);
   const alertsState = useRemote(`alerts:${days}:${threshold}:${reload}`, alertsLoad);
   const adoption = adoptionState.data, top = topState.data, alerts = alertsState.data;
-  function changeThreshold(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const value = Number(new FormData(event.currentTarget).get('threshold'));
-    if (Number.isFinite(value) && value >= 1 && value <= 50) setThreshold(value / 100);
-  }
   return <div className="tw:space-y-7 tw:text-base tw:leading-relaxed tw:text-ink">
     <header className="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-5">
       <div><p className="tw:mb-2 tw:text-xs tw:font-bold tw:tracking-widest tw:text-brand-ink tw:uppercase">Analítica de la aplicación</p>
@@ -55,6 +52,7 @@ export function FuncionalPage() {
       </label>
     </div>
     <p className={notice}><strong>Qué significa adopción:</strong> porcentaje de usuarios activos de cada perfil que usaron una función en el mismo período. Por ejemplo, 40 % significa que 40 de cada 100 usuarios activos la utilizaron.</p>
+    <div className="tw:flex tw:flex-wrap tw:gap-3"><button type="button" className={button} onClick={() => { setDays(30); setLimit(1); thresholdFilter.reset(); }}>Restablecer filtros</button></div>
     <nav aria-label="Secciones de uso por funcionalidad" className="tw:flex tw:flex-wrap tw:gap-2 tw:rounded-2xl tw:bg-canvas tw:p-2">
       {[['comparison', 'Comparar por perfil'], ['ranking', 'Más utilizadas'], ['alerts', 'Uso bajo']].map(([key, title]) => <button
         key={key} type="button" aria-pressed={section === key} aria-controls={`features-${key}`} onClick={() => setSection(key)}
@@ -106,10 +104,10 @@ export function FuncionalPage() {
       <section className={panel} aria-label="Alertas de uso bajo" aria-busy={!alerts && !alertsState.error}>
         <h2 className={heading}>Alertas de uso bajo</h2>
         <p className={description}>Encuentra funciones cuyo porcentaje de uso está por debajo del límite elegido. Estos avisos sirven para analizar el uso; no son alertas de salud.</p>
-        <form className="tw:my-5 tw:flex tw:flex-wrap tw:items-center tw:gap-4" onSubmit={changeThreshold}>
-          <label className={label}>Umbral de adopción (%)<input className={field} type="number" name="threshold" min={1} max={50} step="any" defaultValue={15} required /><span className="tw:text-sm tw:font-normal tw:text-muted">Entre 1 y 50 %. Por ejemplo, 15 busca usos inferiores al 15 %.</span></label>
-          <button className={button} type="submit">Aplicar umbral</button>
-        </form>
+        <div className="tw:my-5 tw:flex tw:flex-wrap tw:items-center tw:gap-4">
+          <label className={label}>Umbral de adopción (%)<input className={field} type="number" name="threshold" min={1} max={50} step="any" value={thresholdFilter.draft.value} onChange={event => thresholdFilter.setField('value', event.target.value)} required /><span className="tw:text-sm tw:font-normal tw:text-muted">Entre 1 y 50 %. Por ejemplo, 15 busca usos inferiores al 15 %.</span></label>
+          {thresholdFilter.error && <p role="alert" className={description}>{thresholdFilter.error}</p>}
+        </div>
         {alertsState.error && <p role="alert" className={notice}>{alertsState.error}</p>}
         {!alerts && !alertsState.error && <p role="status" className={notice}>Cargando alertas...</p>}
         {alerts && alerts.calculable_only !== true && <p role="status" className={notice}>No se puede verificar si esta respuesta excluye porcentajes no calculables. Actualiza la API para consultar alertas validadas.</p>}

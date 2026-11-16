@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { PasswordField } from '../../components/PasswordField';
 import { Link, useNavigate } from 'react-router-dom';
 import { acceptInvitation, inspectInvitation, setupInvitation, type InvitationInfo, type MfaSetup } from '../../api/accountAccess';
 import { MfaProvision } from '../../components/MfaProvision';
@@ -59,8 +60,8 @@ export function InvitationPage() {
       : loading ? <p role="status">Comprobando invitación…</p> : fatal ? <><p role="alert" className="audit-error">{fatal}</p><Link to="/login">Ir al inicio de sesión</Link></> : info && <>
       <h1 className="login-title">Bienvenido a AgeCare</h1><p className="login-subtitle">{info.full_name} · {info.email}</p>
       <form className="login-form invitation-form" onSubmit={submit}>
-        <label className="login-field">Tu contraseña<input name="password" type="password" required minLength={8} maxLength={128} autoComplete="new-password" disabled={busy} /></label>
-        <label className="login-field">Confirma tu contraseña<input name="confirm" type="password" required minLength={8} maxLength={128} autoComplete="new-password" disabled={busy} /></label>
+        <PasswordField className="login-field" label="Tu contraseña" name="password" required minLength={8} maxLength={128} autoComplete="new-password" disabled={busy} />
+        <PasswordField className="login-field" label="Confirma tu contraseña" name="confirm" required minLength={8} maxLength={128} autoComplete="new-password" disabled={busy} />
         <label className="mfa-check"><input type="checkbox" checked={enableMfa || info.mfa_required} disabled={info.mfa_required || busy} onChange={event => setEnableMfa(event.target.checked)} />Verificación en dos pasos {info.mfa_required ? '(obligatoria)' : '(opcional)'}</label>
         {setup && <MfaProvision setup={setup} />}
         {(enableMfa || info.mfa_required) && <label className="login-field">Código del autenticador<input name="otp" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required disabled={busy} /></label>}

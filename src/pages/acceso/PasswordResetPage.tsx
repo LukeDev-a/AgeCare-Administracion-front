@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { confirmPasswordReset, requestPasswordReset } from '../../api/accountAccess';
 import { clearSession } from '../../api/client';
 import { ThemeToggle } from '../../components/ThemeToggle';
+import { PasswordField } from '../../components/PasswordField';
 
 export function PasswordResetPage() {
   const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('token') ?? '');
@@ -54,8 +55,8 @@ export function PasswordResetPage() {
         {sent && <div role="status" className="tw:space-y-2 tw:rounded-xl tw:bg-canvas tw:p-4"><p>Si el correo corresponde a una cuenta activa, recibirás un enlace para cambiar tu contraseña.</p><p>El enlace vence en 30 minutos. Revisa también spam y espera un minuto antes de solicitar otro.</p></div>}
         <form className="login-form" onSubmit={submit}>
           {token ? <>
-            <label className="login-field">Nueva contraseña<input name="password" type="password" minLength={8} maxLength={128} autoComplete="new-password" required disabled={busy} /></label>
-            <label className="login-field">Repite la nueva contraseña<input name="confirm" type="password" minLength={8} maxLength={128} autoComplete="new-password" required disabled={busy} /></label>
+            <PasswordField className="login-field" label="Nueva contraseña" name="password" minLength={8} maxLength={128} autoComplete="new-password" required disabled={busy} />
+            <PasswordField className="login-field" label="Repite la nueva contraseña" name="confirm" minLength={8} maxLength={128} autoComplete="new-password" required disabled={busy} />
           </> : <label className="login-field">Correo electrónico<input name="email" type="email" autoComplete="email" maxLength={254} required disabled={busy} /></label>}
           {error && <p className="audit-error" role="alert">{error}</p>}
           <button type="submit" className="login-submit" disabled={busy}>{busy ? 'Procesando…' : token ? 'Guardar nueva contraseña' : 'Enviar enlace de recuperación'}</button>

@@ -7,7 +7,7 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 class FormValues { constructor(values) { this.values = values; } get(name) { return this.values[name]; } }
 function load(path, dependencies = {}) {
-  const scope = { exports: {}, Error, FormData: FormValues, require: name => dependencies[name] ?? require(name) };
+  const scope = { exports: {}, Error, FormData: FormValues, require: name => dependencies[name] ?? require('./helpers/filter-hooks.cjs').filterDependency(name, dependencies.react) ?? require(name) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, scope);
@@ -128,11 +128,11 @@ test('controles consultan secciones independientes e ignoran respuestas anterior
   await new Promise(resolve => setImmediate(resolve));
   tree = h.render();
   assert.match(renderToStaticMarkup(tree), /Período aplicado: 90 días/);
-  find(section(tree, 'Usuarios activos semanales por perfil'), node => node.type === 'form').props.onSubmit({
-    preventDefault() {}, currentTarget: { weeks: '26' },
-  });
+  find(section(tree, 'Usuarios activos semanales por perfil'), node => node.type === 'input' && node.props.name === 'weeks').props.onChange({ target: { value: '26' } });
+  await new Promise(resolve => setTimeout(resolve, 430));
   h.render(); await h.flush(); tree = h.render();
-  find(section(tree, 'Tickets por categoría'), node => node.type === 'form').props.onSubmit({ preventDefault() {}, currentTarget: { days: '365' } });
+  find(section(tree, 'Tickets por categoría'), node => node.type === 'input' && node.props.name === 'days').props.onChange({ target: { value: '365' } });
+  await new Promise(resolve => setTimeout(resolve, 430));
   h.render(); await h.flush();
   assert.deepEqual(h.calls.roles, [30, 90]); assert.deepEqual(h.calls.weekly, [8, 26]);
   assert.deepEqual(h.calls.categories, [30, 365]); assert.equal(h.calls.support, 1); assert.equal(h.calls.recent, 1);

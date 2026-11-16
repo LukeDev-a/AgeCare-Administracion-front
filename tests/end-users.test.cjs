@@ -6,7 +6,7 @@ const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 function load(path, dependencies = {}) {
-  const scope = { exports: {}, Error, Date, AbortController, URLSearchParams, require: name => dependencies[name] ?? require(name) };
+  const scope = { exports: {}, Error, Date, AbortController, URLSearchParams, require: name => dependencies[name] ?? require('./helpers/filter-hooks.cjs').filterDependency(name, dependencies.react) ?? require(name) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, scope);
@@ -120,7 +120,7 @@ test('pantalla sin aviso superior consulta filtros/páginas y descarta respuesta
   pending.at(-1)(page([account], 32)); await h.settle();
   h.find(n => n.type === 'input').props.onChange({ target: { value: 'prueba@example.test' } });
   h.find(n => n.type === 'select').props.onChange({ target: { value: 'false' } });
-  h.find(n => n.type === 'form').props.onSubmit({ preventDefault() {} }); await h.settle();
+  await h.settle();
   assert.deepEqual(calls.at(-1), ['prueba@example.test', 'false', 1]);
 });
 

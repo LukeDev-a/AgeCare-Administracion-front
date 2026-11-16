@@ -7,7 +7,7 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 class FormValues { constructor(values) { this.values = values; } get(name) { return this.values[name]; } }
 function load(path, dependencies = {}) {
-  const scope = { exports: {}, Error, FormData: FormValues, require: name => dependencies[name] ?? require(name) };
+  const scope = { exports: {}, Error, FormData: FormValues, require: name => dependencies[name] ?? require('./helpers/filter-hooks.cjs').filterDependency(name, dependencies.react) ?? require(name) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, scope);
@@ -106,7 +106,8 @@ test('ranking y alertas cambian independientemente, sin limitar el ranking al pr
   h.render(); await h.flush(); tree = h.render();
   const ranking = renderToStaticMarkup(section(tree, 'Más utilizadas por perfil'));
   assert.match(ranking, /Ranking 4/); assert.ok(ranking.indexOf('Ranking 0') < ranking.indexOf('Ranking 4'));
-  find(section(tree, 'Alertas de uso bajo'), node => node.type === 'form').props.onSubmit({ preventDefault() {}, currentTarget: { threshold: '50' } });
+  find(section(tree, 'Alertas de uso bajo'), node => node.type === 'input' && node.props.name === 'threshold').props.onChange({ target: { value: '50' } });
+  await new Promise(resolve => setTimeout(resolve, 430));
   h.render(); await h.flush(); tree = h.render();
   assert.deepEqual(h.calls.adoption, [30]); assert.equal(h.calls.top.length, 2);
   assert.equal(h.calls.top[1].limit, 5); assert.equal(h.calls.alerts[1].threshold, .5);
@@ -139,7 +140,8 @@ test('un fallo de ranking no oculta la matriz ni las alertas', async () => {
 
 test('un umbral fuera de rango no envía nuevas consultas', async () => {
   const h = harness(); h.render(); await h.flush();
-  find(section(h.render(), 'Alertas de uso bajo'), node => node.type === 'form').props.onSubmit({ preventDefault() {}, currentTarget: { threshold: '51' } });
+  find(section(h.render(), 'Alertas de uso bajo'), node => node.type === 'input' && node.props.name === 'threshold').props.onChange({ target: { value: '51' } });
+  await new Promise(resolve => setTimeout(resolve, 430));
   h.render(); await h.flush();
   assert.equal(h.calls.alerts.length, 1);
 });
@@ -204,7 +206,8 @@ test('las secciones conservan ranking y umbral sin repetir consultas al navegar'
   assert.equal(find(tree, node => node.props?.id === 'features-comparison').props.hidden, false);
   find(section(tree, 'Más utilizadas por perfil'), node => node.type === 'select').props.onChange({ target: { value: '3' } });
   h.render(); await h.flush(); tree = h.render();
-  find(section(tree, 'Alertas de uso bajo'), node => node.type === 'form').props.onSubmit({ preventDefault() {}, currentTarget: { threshold: '25' } });
+  find(section(tree, 'Alertas de uso bajo'), node => node.type === 'input' && node.props.name === 'threshold').props.onChange({ target: { value: '25' } });
+  await new Promise(resolve => setTimeout(resolve, 430));
   h.render(); await h.flush(); tree = h.render();
   for (const selected of ['ranking', 'alerts', 'comparison']) {
     find(tree, node => node.type === 'button' && node.props['aria-controls'] === `features-${selected}`).props.onClick();

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { confirmMfaRecovery, requestMfaRecovery } from '../../api/mfaRecovery';
 import { ThemeToggle } from '../../components/ThemeToggle';
+import { PasswordField } from '../../components/PasswordField';
 
 export function MfaRecoveryPage() {
   const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('token') ?? '');
@@ -37,7 +38,7 @@ export function MfaRecoveryPage() {
       <form className="login-form" onSubmit={submit}>
         {!token && <>
           <label className="login-field">Correo registrado<input name="email" type="email" required maxLength={254} autoComplete="username" disabled={busy} /></label>
-          <label className="login-field">Contraseña actual<input name="password" type="password" required maxLength={128} autoComplete="current-password" disabled={busy} /></label>
+          <PasswordField className="login-field" label="Contraseña actual" name="password" required maxLength={128} autoComplete="current-password" disabled={busy} />
           <label className="login-field">Motivo de la solicitud<textarea name="reason" required minLength={5} maxLength={500} rows={3} disabled={busy} /></label>
           <p className="tw:text-sm tw:text-muted">No incluyas contraseñas ni códigos en el motivo. Si tampoco recuerdas tu contraseña, recupérala primero.</p>
         </>}

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { fetchLegalDocuments, publishLegalVersion, type LegalDocuments, type LegalDocType } from '../../api/legal';
+import { fetchLegalDocuments, type LegalDocuments, type LegalDocType } from '../../api/legal';
 import { useAuth } from '../../auth/AuthContext';
 import { LEGAL_NAMES, LEGAL_STATES, legalDate } from '../../lib/legalMeta';
 import { LegalDraftForm } from './LegalDraftForm';
+import { LegalVersionDetail } from './LegalVersionDetail';
+import { legalStyles as s, legalStateColor } from './legalStyles';
 
 export function LegalPage() {
   const { user } = useAuth();
@@ -11,8 +13,7 @@ export function LegalPage() {
   const [reload, setReload] = useState(0);
   const [selected, setSelected] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [publicationError, setPublicationError] = useState('');
+  const [notice, setNotice] = useState('');
   const [result, setResult] = useState<{ key: string; data: LegalDocuments | null; error: string } | null>(null);
   const key = `${type}:${reload}`;
   const data = result?.key === key ? result.data : null;
@@ -24,53 +25,34 @@ export function LegalPage() {
       .catch((err: unknown) => { if (!cancelled) setResult({ key, data: null, error: err instanceof Error ? err.message : 'No fue posible consultar los documentos.' }); });
     return () => { cancelled = true; };
   }, [allowed, type, reload, key]);
-  if (!allowed) return <p>Este apartado está disponible solo para administradores.</p>;
+  if (!allowed) return <p className={s.notice}>Este apartado está disponible solo para administradores.</p>;
   const allVersions = data?.documents.flatMap(doc => doc.versions ?? []) ?? [];
   const version = allVersions.find(row => row.version_id === selected) ?? null;
-  async function publish() {
-    if (!version || busy || user?.role !== 'admin') return;
-    setBusy(true); setPublicationError('');
-    try { await publishLegalVersion(version.version_id); setReload(value => value + 1); }
-    catch (err) { setPublicationError(err instanceof Error ? err.message : 'No fue posible publicar.'); }
-    finally { setBusy(false); }
-  }
-  return <>
-    <div className="filter-row"><label>Documento <select aria-label="Filtrar documentos legales" value={type} disabled={busy || showForm}
-      onChange={event => { setType(event.target.value as LegalDocType | ''); setSelected(''); setPublicationError(''); }}>
+  return <section aria-label="Legales y privacidad" className="tw:mx-auto tw:max-w-[1400px] tw:space-y-6">
+    <header className={s.panel}><div className="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-4"><div className="tw:space-y-2"><p className="tw:text-xs tw:font-bold tw:uppercase tw:tracking-wider tw:text-brand-ink">Documentos de la plataforma</p><h2 className="tw:text-3xl tw:font-bold tw:tracking-tight">Legales y privacidad</h2><p className={s.muted}>Consulta los textos vigentes, revisa el histórico y prepara nuevas versiones.</p></div><button className={`${s.button} ${s.primary}`} type="button" disabled={!data?.earliest_major_effective_date || showForm || !!version} onClick={() => { setNotice(''); setShowForm(true); }}>Nueva versión</button></div>
+      <div className="tw:grid tw:gap-3 tw:sm:grid-cols-3">{[['1. Crear borrador', 'Prepara el texto, los cambios y la fecha.'], ['2. Revisar y publicar', 'Confirma la versión que quedará registrada.'], ['3. Entrada en vigencia', 'Se aplica desde la fecha indicada, en horario de Santiago.']].map(([title, text]) => <div key={title} className={s.notice}><p className="tw:font-semibold tw:text-ink">{title}</p><p className="tw:mt-1">{text}</p></div>)}</div>
+    </header>
+    {notice && <p role="status" className={`${s.notice} tw:text-positive`}>{notice}</p>}
+    <div className={`${s.panel} tw:flex tw:flex-wrap tw:items-end tw:justify-between tw:gap-4`}><label className={`${s.label} tw:w-full tw:sm:max-w-sm`}>Documento<select className={s.field} aria-label="Filtrar documentos legales" value={type} disabled={showForm || !!version}
+      onChange={event => { setType(event.target.value as LegalDocType | ''); setSelected(''); setNotice(''); }}>
       <option value="">Todos los documentos</option>{Object.entries(LEGAL_NAMES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-    </select></label>
-      <button className="action-button" type="button" disabled={!data?.earliest_major_effective_date || showForm || busy} onClick={() => setShowForm(true)}>Nueva versión</button>
-      <button className="action-button" type="button" disabled={busy || showForm} onClick={() => setReload(value => value + 1)}>Actualizar vista</button>
-    </div>
-    <p className="mini-note">Publicar conserva el texto y programa su entrada en vigencia; no reemplaza inmediatamente la versión vigente. Fechas y horas de Santiago.</p>
-    <p className="mini-note">La solicitud de reaceptación a los usuarios queda pendiente de conectar con la app móvil.</p>
-    {error && <p role="alert">{error}</p>}
-    {!data && !error && <p role="status">Cargando documentos legales...</p>}
-    {showForm && data && <LegalDraftForm initialType={type || 'terms'} earliestMajorDate={data.earliest_major_effective_date}
-      onCancel={() => setShowForm(false)} onSaved={id => { setShowForm(false); setSelected(id); setPublicationError(''); setReload(value => value + 1); }} />}
-    {data && <>
-      <p className="mini-note">Consultado: {legalDate(data.computed_at)}</p>
-      {data.documents.map(doc => <section key={doc.doc_type} className="card">
-        <h2 className="card-title">{LEGAL_NAMES[doc.doc_type]}</h2>
-        <p>{doc.current ? `Versión vigente: ${doc.current.semver}` : 'Sin versión vigente'}</p>
-        {!doc.versions ? <p>Actualiza la API para consultar los textos y el histórico completo.</p> : doc.versions.length === 0 ? <p>No hay versiones registradas.</p> :
-          <div style={{ overflowX: 'auto' }}><table className="data"><thead><tr><th>Versión</th><th>Situación</th><th>Publicación</th><th>Entrada en vigencia</th><th>Reaceptación</th></tr></thead>
-            <tbody>{doc.versions.map(row => <tr key={row.version_id}>
-              <td><button type="button" disabled={busy} className="action-button" onClick={() => { setSelected(row.version_id); setPublicationError(''); }}>{row.semver}</button></td>
-              <td>{LEGAL_STATES[row.display_state]}</td><td>{legalDate(row.published_at)}</td><td>{legalDate(row.effective_at)}</td><td>{row.requires_reacceptance ? 'Sí' : 'No'}</td>
-            </tr>)}</tbody></table></div>}
+    </select></label><button className={s.button} type="button" disabled={showForm || !!version} onClick={() => { setType(''); setSelected(''); setNotice(''); }}>Restablecer filtros</button><button className={s.button} type="button" disabled={showForm || !!version || !data && !error} onClick={() => setReload(value => value + 1)}>Actualizar documentos</button></div>
+    {error ? <div role="alert" className={s.error}><p>{error}</p><button type="button" className={`${s.button} tw:mt-3`} onClick={() => setReload(value => value + 1)}>Reintentar consulta</button></div> : !data ? <p role="status" className={s.notice}>Cargando documentos legales…</p> : <>
+      <p className={s.muted}>Última consulta: {legalDate(data.computed_at)} · Hora de Santiago</p>
+      {!data.documents.length && <p className={s.notice}>No hay documentos para esta consulta.</p>}
+      {data.documents.map(doc => <section key={doc.doc_type} className={s.panel} aria-label={LEGAL_NAMES[doc.doc_type]}>
+        <div className="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-4"><div className="tw:space-y-2"><h3 className={s.heading}>{LEGAL_NAMES[doc.doc_type]}</h3><p className={s.muted}>{doc.doc_type === 'terms' ? 'Condiciones que regulan el uso de la plataforma.' : 'Información sobre el tratamiento de datos personales.'}</p></div><span className={`${s.badge} ${doc.current ? 'tw:text-positive' : 'tw:text-muted'}`}>{doc.current ? `Versión vigente: ${doc.current.semver}` : 'Sin versión vigente'}</span></div>
+        {!doc.versions ? <p className={s.notice}>Actualiza la API para consultar los textos y el histórico completo.</p> : !doc.versions.length ? <p className={s.notice}>Todavía no hay versiones registradas. Crea un borrador para preparar este documento.</p> : <div className="tw:space-y-3"><h4 className="tw:font-semibold">Versiones registradas</h4><ul className="tw:list-none tw:space-y-3">{doc.versions.map(row => <li key={row.version_id} className="tw:grid tw:items-center tw:gap-4 tw:rounded-xl tw:border tw:border-solid tw:border-stroke tw:p-4 tw:md:grid-cols-[1fr_1.3fr_1.5fr_auto]">
+          <div className="tw:space-y-2"><p className="tw:font-bold">Versión {row.semver}</p><span className={`${s.badge} ${legalStateColor(row.display_state)}`}>{LEGAL_STATES[row.display_state]}</span></div>
+          <div><p className="tw:text-xs tw:text-muted">Entrada en vigencia</p><p className="tw:mt-1 tw:text-sm">{legalDate(row.effective_at)}</p></div>
+          <div className="tw:space-y-1"><p className="tw:text-sm">{row.requires_reacceptance ? 'Requiere nueva aceptación' : 'No requiere nueva aceptación'}</p><p className="tw:text-xs tw:text-muted">{row.published_at ? `Publicada: ${legalDate(row.published_at)}` : 'Borrador · aún sin publicar'}</p></div>
+          <button type="button" className={`${s.button} ${row.status === 'draft' ? s.primary : ''}`} aria-label={`Revisar ${LEGAL_NAMES[doc.doc_type]} versión ${row.semver}`} onClick={() => { setSelected(row.version_id); setNotice(''); }}>Revisar versión</button>
+        </li>)}</ul></div>}
       </section>)}
+      <details className={s.panel}><summary className="tw:cursor-pointer tw:font-semibold">Sobre la aceptación en la app móvil</summary><p className={s.muted}>La solicitud de reaceptación a los usuarios queda pendiente de conectar con la app móvil. Esta consola registra y publica las versiones de los documentos.</p></details>
     </>}
-    {version && <section className="card">
-      <h2 className="card-title">{LEGAL_NAMES[version.doc_type]} · {version.semver}</h2>
-      <p>{LEGAL_STATES[version.display_state]} · Entrada en vigencia: {legalDate(version.effective_at)}</p>
-      <p className="mini-note">Creada por {version.created_by_name || 'Responsable no registrado'} · {legalDate(version.created_at)}</p>
-      <h3>Resumen de cambios</h3><p style={{ whiteSpace: 'pre-wrap' }}>{version.changelog}</p>
-      <h3>Texto del documento (Markdown)</h3><div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', lineHeight: 1.6 }}>{version.content_md}</div>
-      <p>{version.requires_reacceptance ? 'Esta versión requiere aceptación de los usuarios cuando entre en vigencia.' : 'Esta versión no exige reaceptación por cambio mayor.'}</p>
-      {version.status === 'draft' && <><p className="mini-note">Revisa el texto y la fecha antes de publicar. Una versión publicada se conserva sin editar para mantener el histórico.</p>
-        <button className="action-button" type="button" disabled={busy || showForm} onClick={() => void publish()}>{busy ? 'Publicando...' : `Publicar versión ${version.semver}`}</button></>}
-      {publicationError && <p role="alert">{publicationError}</p>}
-    </section>}
-  </>;
+    {showForm && data && <LegalDraftForm initialType={type || 'terms'} earliestMajorDate={data.earliest_major_effective_date}
+      onCancel={() => setShowForm(false)} onSaved={id => { setShowForm(false); setSelected(id); setNotice('Borrador creado. Revisa la versión antes de publicarla.'); setReload(value => value + 1); }} />}
+    {version && <LegalVersionDetail key={version.version_id} version={version} onClose={() => setSelected('')} onPublished={() => { setSelected(''); setNotice(`Versión ${version.semver} publicada. Su entrada en vigencia se rige por la fecha registrada.`); setReload(value => value + 1); }} />}
+  </section>;
 }

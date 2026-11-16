@@ -1,3 +1,4 @@
+import { useAutoFilters } from '../../hooks/useAutoFilters';
 import { useEffect, useState } from 'react';
 import { fetchCaregivers, type Caregiver, type CaregiversListResponse } from '../../api/caregivers';
 import { fmt } from '../../lib/format';
@@ -6,10 +7,9 @@ import { CaregiversTable } from './CaregiversTable';
 import { marketStyles as s } from './marketStyles';
 
 export function CaregiversPanel() {
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
+  const { draft, filters, page, setPage, setField, reset } = useAutoFilters(
+    { search: '', status: '' }, { delayedKeys: ['search'] });
+  const { search, status } = filters;
   const [result, setResult] = useState<{ key: string; data: CaregiversListResponse | null; error: string } | null>(null);
   const [selected, setSelected] = useState<Caregiver | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -24,16 +24,14 @@ export function CaregiversPanel() {
     return () => { cancelled = true; };
   }, [search, status, page, reloadToken, key]);
   function refresh() { setReloadToken(token => token + 1); }
-  function handleSearch() { setSearch(searchInput.trim()); setPage(1); }
   return <section className={s.panel} aria-label="Perfiles de cuidadoras">
     <h3 className={s.heading}>Perfiles de cuidadoras</h3><p className={`tw:mt-2 tw:mb-6 ${s.muted}`}>Revisa la información de cada perfil y consulta su estado de aprobación.</p>
-    <div className="tw:mb-5 tw:grid tw:items-end tw:gap-4 tw:md:grid-cols-[minmax(180px,1fr)_200px_auto]">
-      <label className={s.label}>Buscar por nombre o correo<input className={s.field} type="search" aria-label="Buscar cuidadoras" value={searchInput} maxLength={120} placeholder="Nombre o correo" onChange={event => setSearchInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') handleSearch(); }} /></label>
-      <label className={s.label}>Estado<select className={s.field} aria-label="Filtrar cuidadoras" value={status} onChange={event => { setStatus(event.target.value); setPage(1); }}><option value="">Todos los estados</option><option value="pending">Pendiente</option><option value="approved">Aprobada</option><option value="suspended">Suspendida</option></select></label>
-      <button className={s.button} type="button" onClick={handleSearch}>Buscar</button>
+    <div className="tw:mb-5 tw:grid tw:items-end tw:gap-4 tw:md:grid-cols-[minmax(180px,1fr)_200px]">
+      <label className={s.label}>Buscar por nombre o correo<input className={s.field} type="search" aria-label="Buscar cuidadoras" value={draft.search} maxLength={120} placeholder="Nombre o correo" onChange={event => setField('search', event.target.value)} /></label>
+      <label className={s.label}>Estado<select className={s.field} aria-label="Filtrar cuidadoras" value={status} onChange={event => { setField('status', event.target.value); }}><option value="">Todos los estados</option><option value="pending">Pendiente</option><option value="approved">Aprobada</option><option value="suspended">Suspendida</option></select></label>
     </div>
     <div className="tw:mb-5 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3"><p className={s.muted}>{data ? `${fmt(data.total)} perfiles · página ${data.page}` : error ? 'Consulta no disponible' : 'Consultando perfiles…'}</p><div className={s.actions}>
-      {(searchInput || status) && <button className={s.button} type="button" onClick={() => { setSearchInput(''); setSearch(''); setStatus(''); setPage(1); }}>Limpiar filtros</button>}
+      <button className={s.button} type="button" onClick={reset}>Restablecer filtros</button>
       <button className={s.button} type="button" disabled={loading} onClick={refresh}>Actualizar lista</button>
     </div></div>
     {error ? <p role="alert" className={s.error}>{error}</p> : !data ? <p role="status" className={`${s.notice} tw:py-10 tw:text-center`}>Cargando perfiles…</p> : <CaregiversTable items={data.items} selectedId={selected?.caregiver_id ?? null} onSelect={id => setSelected(data.items.find(item => item.caregiver_id === id) ?? null)} />}

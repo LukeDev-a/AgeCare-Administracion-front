@@ -1,5 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { fetchIncidents, type IncidentFilters } from '../../api/incidents';
+import { useAutoFilters, integerFilter } from '../../hooks/useAutoFilters';
+import { useEffect, useState } from 'react';
+import { fetchIncidents } from '../../api/incidents';
 import type { OpsIncident, OpsIncidents } from '../../api/operational';
 import { useAuth } from '../../auth/AuthContext';
 import { canManageIncidents } from '../../routes/permissions';
@@ -8,21 +9,22 @@ import { INCIDENT_STATUSES, incidentMailLabel } from '../../lib/incidentsMeta';
 import { IncidentForm } from './IncidentForm';
 import { LoadingIndicator } from './LoadingIndicator';
 
-const INITIAL: IncidentFilters = { days: 30, status: '', component: '', page: 1, page_size: 10 };
+const INITIAL = { days: '30', status: '', component: '' };
 export function IncidentsPanel({ refreshKey = 0, active = true }: { refreshKey?: number; active?: boolean }) {
   const { user } = useAuth();
   const allowed = canManageIncidents(user?.role);
-  const [filters, setFilters] = useState(INITIAL);
+  const { draft, filters, page, setPage, setField, reset, error: filterError } = useAutoFilters(INITIAL, {
+    delayedKeys: ['days'], validate: value => integerFilter(value.days, 1, 365, 'Días hacia atrás') });
   const [reload, setReload] = useState(0);
   const [result, setResult] = useState<{ key: string; data: OpsIncidents | null; error: string }>({ key: '', data: null, error: '' });
   const [selected, setSelected] = useState<OpsIncident | null>(null);
   const [editing, setEditing] = useState(false);
   const [creating, setCreating] = useState(false);
   const [notice, setNotice] = useState('');
-  const key = `${JSON.stringify(filters)}:${refreshKey}:${reload}`;
+  const key = `${JSON.stringify(filters)}:${page}:${refreshKey}:${reload}`;
   useEffect(() => {
     let cancelled = false;
-    fetchIncidents(filters).then(data => {
+    fetchIncidents({ ...filters, days: Number(filters.days), page, page_size: 10 }).then(data => {
       if (cancelled) return;
       setResult({ key, data, error: '' });
       setSelected(current => {
@@ -32,7 +34,7 @@ export function IncidentsPanel({ refreshKey = 0, active = true }: { refreshKey?:
     })
       .catch((error: unknown) => { if (!cancelled) setResult({ key, data: null, error: error instanceof Error ? error.message : 'No fue posible consultar incidentes.' }); });
     return () => { cancelled = true; };
-  }, [filters, key]);
+  }, [filters, page, key]);
   const data = result.key === key ? result.data : null;
   const error = result.key === key ? result.error : '';
   const pendingMail = data?.items.some(item => item.notification_status === 'queued') ?? false;
@@ -41,12 +43,6 @@ export function IncidentsPanel({ refreshKey = 0, active = true }: { refreshKey?:
     const timer = window.setInterval(() => setReload(count => count + 1), 5000);
     return () => window.clearInterval(timer);
   }, [active, pendingMail, editing, creating]);
-  function apply(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const values = new FormData(event.currentTarget);
-    setFilters({ ...INITIAL, days: Number(values.get('days')), status: String(values.get('status') ?? ''), component: String(values.get('component') ?? '') });
-    setSelected(null); setEditing(false); setCreating(false);
-  }
   function saved(value: OpsIncident) {
     setSelected(value); setEditing(false); setCreating(false); setReload(count => count+1);
     setNotice('Registro guardado.');
@@ -55,13 +51,14 @@ export function IncidentsPanel({ refreshKey = 0, active = true }: { refreshKey?:
   return <section className="tw:space-y-5 tw:rounded-2xl tw:border tw:border-solid tw:border-stroke tw:bg-panel tw:p-5 tw:sm:p-7 tw:[&_button]:min-h-11 tw:[&_button]:text-sm">
     <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4"><div><h2 className="tw:text-xl tw:font-bold">Incidentes y mantenimientos</h2><p className="tw:mt-2 tw:text-muted">Consulta los problemas registrados y el seguimiento de su resolución.</p></div>
       {allowed && <button className="action-button" type="button" onClick={() => { setCreating(true); setEditing(false); setSelected(null); setNotice(''); }}>Registrar incidente</button>}</div>
-    <form className="tw:flex tw:flex-wrap tw:items-end tw:gap-4 tw:rounded-xl tw:bg-canvas tw:p-4 tw:[&_label]:grid tw:[&_label]:gap-2 tw:[&_label]:font-semibold tw:[&_input]:min-h-11 tw:[&_input]:w-28 tw:[&_input]:rounded-lg tw:[&_input]:border tw:[&_input]:border-solid tw:[&_input]:border-stroke tw:[&_input]:bg-panel tw:[&_input]:px-3 tw:[&_input]:text-ink tw:[&_select]:min-h-11 tw:[&_select]:max-w-full tw:[&_select]:rounded-lg tw:[&_select]:border tw:[&_select]:border-solid tw:[&_select]:border-stroke tw:[&_select]:bg-panel tw:[&_select]:px-3 tw:[&_select]:text-ink" onSubmit={apply}>
-      <label>Días hacia atrás<input name="days" type="number" min={1} max={365} defaultValue={30} required /></label>
-      <label>Estado<select name="status"><option value="">Todos</option>{Object.entries(INCIDENT_STATUSES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-      <label>Componente<select name="component"><option value="">Todos</option>{OPS_COMPONENTS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-      <button className="action-button" type="submit">Aplicar filtros</button>
+    <fieldset disabled={editing || creating} className="tw:min-w-0 tw:border-0 tw:flex tw:flex-wrap tw:items-end tw:gap-4 tw:rounded-xl tw:bg-canvas tw:p-4 tw:[&_label]:grid tw:[&_label]:gap-2 tw:[&_label]:font-semibold tw:[&_input]:min-h-11 tw:[&_input]:w-28 tw:[&_input]:rounded-lg tw:[&_input]:border tw:[&_input]:border-solid tw:[&_input]:border-stroke tw:[&_input]:bg-panel tw:[&_input]:px-3 tw:[&_input]:text-ink tw:[&_select]:min-h-11 tw:[&_select]:max-w-full tw:[&_select]:rounded-lg tw:[&_select]:border tw:[&_select]:border-solid tw:[&_select]:border-stroke tw:[&_select]:bg-panel tw:[&_select]:px-3 tw:[&_select]:text-ink">
+      <label>Días hacia atrás<input name="days" type="number" min={1} max={365} value={draft.days} onChange={event => { setField('days', event.target.value); setSelected(null); }} required /></label>
+      <label>Estado<select name="status" value={draft.status} onChange={event => { setField('status', event.target.value); setSelected(null); }}><option value="">Todos</option>{Object.entries(INCIDENT_STATUSES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+      <label>Componente<select name="component" value={draft.component} onChange={event => { setField('component', event.target.value); setSelected(null); }}><option value="">Todos</option>{OPS_COMPONENTS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+      <button className="action-button secondary" type="button" onClick={() => { reset(); setSelected(null); }}>Restablecer filtros</button>
       <button className="action-button secondary" type="button" onClick={() => setReload(count => count+1)}>Actualizar incidentes</button>
-    </form>
+    </fieldset>
+    {filterError && <p role="alert" className="tw:text-warning">{filterError}</p>}
     <p className="tw:text-muted">Consulta de 1 a 365 días. También incluye los mantenimientos programados para fechas futuras.</p>
     {notice && <p className="tw:rounded-xl tw:bg-canvas tw:p-4" role="status">{notice}</p>}
     {creating && allowed && <IncidentForm onSaved={saved} onCancel={() => setCreating(false)} />}
@@ -74,9 +71,9 @@ export function IncidentsPanel({ refreshKey = 0, active = true }: { refreshKey?:
           <td>{row.severity === 'outage' ? 'Fuera de servicio' : 'Servicio degradado'}</td><td>{INCIDENT_STATUSES[row.status]}</td><td>{opsDate(row.started_at)}</td><td>{opsDate(row.resolved_at)}</td>
           <td><button className="action-button secondary" onClick={() => { setSelected(row); setEditing(false); setCreating(false); }}>Ver detalle</button></td></tr>)}</tbody></table></div>
       <div className="tw:mt-4 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3">
-        <button type="button" className="action-button secondary" disabled={filters.page <= 1} onClick={() => { setFilters({ ...filters, page: filters.page-1 }); setSelected(null); }}>Anterior</button>
+        <button type="button" className="action-button secondary" disabled={page <= 1} onClick={() => { setPage(page-1); setSelected(null); }}>Anterior</button>
         <span>Página {data.page} · {data.total} registros</span>
-        <button type="button" className="action-button secondary" disabled={filters.page*filters.page_size >= data.total} onClick={() => { setFilters({ ...filters, page: filters.page+1 }); setSelected(null); }}>Siguiente</button>
+        <button type="button" className="action-button secondary" disabled={page*10 >= data.total} onClick={() => { setPage(page+1); setSelected(null); }}>Siguiente</button>
       </div>
     </>}
     {selected && <div className="tw:space-y-6 tw:rounded-2xl tw:border tw:border-solid tw:border-stroke tw:bg-canvas tw:p-5 tw:text-base tw:leading-7 tw:sm:p-7">

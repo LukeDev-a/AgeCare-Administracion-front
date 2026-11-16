@@ -85,7 +85,7 @@ export function JuegosPage() {
       </div>
       <div className="tw:mt-5 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3">
         <p className={s.muted}>{isLoading ? 'Consultando catálogo…' : error ? 'Consulta no disponible' : `${items.length} resultados · ${activeCount} activos · ${items.length - activeCount} inactivos`}</p>
-        {(search || stateFilter || typeFilter !== 'all') && <button type="button" className={s.button} onClick={() => { setSearch(''); setStateFilter(''); setTypeFilter('all'); }}>Limpiar filtros</button>}
+        <button type="button" className={s.button} onClick={() => { setSearch(''); setStateFilter(''); setTypeFilter('all'); }}>Restablecer filtros</button>
       </div>
     </section>
     {notice && <p role="status" className={`${s.notice} ${noticeTone === 'negative' ? 'tw:text-negative' : 'tw:text-positive'}`}>{notice}</p>}

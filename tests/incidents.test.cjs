@@ -7,7 +7,7 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 class FormValues { constructor(values) { this.values = values; } get(name) { return this.values[name] ?? null; } }
 function load(path, dependencies = {}, globals = {}) {
-  const scope = { exports: {}, Error, URLSearchParams, FormData: FormValues, ...globals, require: name => dependencies[name] ?? require(name) };
+  const scope = { exports: {}, Error, URLSearchParams, FormData: FormValues, ...globals, require: name => dependencies[name] ?? require('./helpers/filter-hooks.cjs').filterDependency(name, dependencies.react) ?? require(name) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, scope);
@@ -126,7 +126,9 @@ test('panel consulta, pagina, filtra y muestra detalle sin edición para analyst
   render(); h.run(); await new Promise(resolve => setImmediate(resolve));
   assert.equal(calls[1].page, 2);
   tree = render();
-  find(tree, node => node.type === 'form').props.onSubmit({ preventDefault() {}, currentTarget: { days: '7', status: 'resolved', component: 'auth' } });
+  find(tree, node => node.type === 'input' && node.props.name === 'days').props.onChange({ target: { value: '7' } });
+  find(render(), node => node.type === 'select' && node.props.name === 'status').props.onChange({ target: { value: 'resolved' } });
+  find(render(), node => node.type === 'select' && node.props.name === 'component').props.onChange({ target: { value: 'auth' } });
   render(); h.run(); await new Promise(resolve => setImmediate(resolve));
   assert.equal(calls[2].page, 1);
   assert.equal(calls[2].days, 7);

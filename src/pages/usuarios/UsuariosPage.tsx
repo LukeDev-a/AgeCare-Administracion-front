@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useAutoFilters, integerFilter } from '../../hooks/useAutoFilters';
+import { useCallback, useEffect, useState } from 'react';
 import { fetchRecentTickets, fetchRolesSummary, fetchRolesWeekly, fetchSupportSummary, fetchTicketsByCategory } from '../../api/usersSupport';
 import { fmt, formatDuration, percent } from '../../lib/format';
 import { ROLE_META, roleLabel } from '../../lib/roleMeta';
@@ -27,8 +28,10 @@ const resolvedDelta = (value: number | null) => value == null ? 'Sin comparació
 export function UsuariosPage() {
   const [section, setSection] = useState('activity');
   const [days, setDays] = useState(30);
-  const [weeks, setWeeks] = useState(8);
-  const [categoryDays, setCategoryDays] = useState(30);
+  const weeksFilter = useAutoFilters({ value: '8' }, { delayedKeys: ['value'], validate: row => integerFilter(row.value, 2, 26, 'Cantidad de semanas') });
+  const weeks = Number(weeksFilter.filters.value);
+  const categoryFilter = useAutoFilters({ value: '30' }, { delayedKeys: ['value'], validate: row => integerFilter(row.value, 1, 365, 'Últimos días') });
+  const categoryDays = Number(categoryFilter.filters.value);
   const [reload, setReload] = useState(0);
   const rolesLoad = useCallback(() => fetchRolesSummary(days), [days]);
   const weeklyLoad = useCallback(() => fetchRolesWeekly(weeks), [weeks]);
@@ -40,11 +43,6 @@ export function UsuariosPage() {
   const recentState = useRemote(`recent:${reload}`, fetchRecentTickets);
   const roles = rolesState.data, weekly = weeklyState.data, support = supportState.data;
   const categories = categoryState.data, recent = recentState.data;
-  function applyNumber(event: FormEvent<HTMLFormElement>, name: string, setValue: (value: number) => void) {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    setValue(Number(data.get(name)));
-  }
   return <div className="tw:space-y-7 tw:text-base tw:leading-relaxed tw:text-ink">
     <header className="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-4">
       <div>
@@ -52,7 +50,7 @@ export function UsuariosPage() {
         <h1 className="tw:text-2xl tw:font-bold tw:sm:text-3xl">Usuarios y soporte</h1>
         <p className="tw:mt-2 tw:max-w-2xl tw:text-muted">Conoce la actividad de los usuarios de la app móvil y cómo avanza su atención.</p>
       </div>
-      <button type="button" className={button} onClick={() => setReload(value => value+1)}><span aria-hidden="true">↻ </span>Actualizar vista</button>
+      <div className="tw:flex tw:flex-wrap tw:gap-3"><button type="button" className={button} onClick={() => { setDays(30); weeksFilter.reset(); categoryFilter.reset(); }}>Restablecer filtros</button><button type="button" className={button} onClick={() => setReload(value => value+1)}><span aria-hidden="true">↻ </span>Actualizar vista</button></div>
     </header>
     <nav aria-label="Secciones de usuarios y soporte" className="tw:flex tw:flex-wrap tw:gap-2 tw:rounded-2xl tw:bg-canvas tw:p-2">
       {[['activity', 'Actividad de usuarios'], ['support', 'Atención de soporte']].map(([key, label]) => <button
@@ -99,10 +97,10 @@ export function UsuariosPage() {
     <section className={panel} aria-label="Usuarios activos semanales por perfil" aria-busy={!weekly && !weeklyState.error}>
       <div className={sectionHead}>
       <div><h2 className={heading}>Usuarios activos semanales por perfil</h2><p className={description}>Compara cómo cambia la actividad de cada perfil de una semana a otra.</p></div>
-      <form className={toolbar} onSubmit={event => applyNumber(event, 'weeks', setWeeks)}>
-        <label className={label}>Cantidad de semanas a mostrar<input className={field} type="number" name="weeks" min={2} max={26} defaultValue={8} required /><span className="tw:text-sm tw:font-normal tw:text-muted">Entre 2 y 26 semanas</span></label>
-        <button type="submit" className={button}>Consultar semanas</button>
-      </form></div>
+      <div className={toolbar}>
+        <label className={label}>Cantidad de semanas a mostrar<input className={field} type="number" name="weeks" min={2} max={26} value={weeksFilter.draft.value} onChange={event => weeksFilter.setField('value', event.target.value)} required /><span className="tw:text-sm tw:font-normal tw:text-muted">Entre 2 y 26 semanas</span></label>
+        {weeksFilter.error && <p role="alert" className={description}>{weeksFilter.error}</p>}
+      </div></div>
       {weeklyState.error && <p role="alert" className={errorStyle}>{weeklyState.error}</p>}
       {!weekly && !weeklyState.error && <p role="status" className={notice}>Cargando actividad semanal...</p>}
       {weekly && <>
@@ -150,10 +148,10 @@ export function UsuariosPage() {
       <section className={panel} aria-label="Tickets por categoría" aria-busy={!categories && !categoryState.error}>
         <h2 className={heading}>Tickets por categoría</h2>
         <p className={description}>Identifica los motivos de consulta más frecuentes en el período elegido.</p>
-        <form className={toolbar} onSubmit={event => applyNumber(event, 'days', setCategoryDays)}>
-          <label className={label}>Últimos días<input className={field} type="number" name="days" min={1} max={365} defaultValue={30} required /><span className="tw:text-sm tw:font-normal tw:text-muted">Entre 1 y 365 días</span></label>
-          <button type="submit" className={button}>Consultar categorías</button>
-        </form>
+        <div className={toolbar}>
+          <label className={label}>Últimos días<input className={field} type="number" name="days" min={1} max={365} value={categoryFilter.draft.value} onChange={event => categoryFilter.setField('value', event.target.value)} required /><span className="tw:text-sm tw:font-normal tw:text-muted">Entre 1 y 365 días</span></label>
+          {categoryFilter.error && <p role="alert" className={description}>{categoryFilter.error}</p>}
+        </div>
         {categoryState.error && <p role="alert" className={errorStyle}>{categoryState.error}</p>}
         {!categories && !categoryState.error && <p role="status" className={notice}>Cargando categorías...</p>}
         {categories && <>

@@ -7,6 +7,7 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 function load(path, dependencies = {}, globals = {}) {
   const context = { exports: {}, Error, URLSearchParams, require: name => dependencies[name]
+    ?? require('./helpers/filter-hooks.cjs').filterDependency(name, dependencies.react)
     ?? (name === './contentStyles' ? load('src/pages/contenido/contentStyles.ts')
       : name === '../../components/Modal' ? load('src/components/Modal.tsx') : require(name)), ...globals };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
@@ -213,7 +214,7 @@ test('las pestañas conservan filtros y el borrador abre la gestión del conteni
   });
   await h.settle();
   h.find(node => node.type === 'input').props.onChange({ target: { value: 'Consulta editorial' } });
-  h.find(node => node.type === 'button' && node.props.children === 'Buscar').props.onClick();
+  await new Promise(resolve => setTimeout(resolve, 430));
   await h.settle();
   h.find(node => node.type === 'button' && node.props.children === 'Preparar noticias').props.onClick();
   await h.settle();

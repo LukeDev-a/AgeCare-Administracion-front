@@ -7,6 +7,7 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 function load(path, dependencies = {}) {
   const scope = { exports: {}, URLSearchParams, Date, AbortController, require: name => dependencies[name]
+    ?? require('./helpers/filter-hooks.cjs').filterDependency(name, dependencies.react)
     ?? (name === './auditStyles' ? load('src/pages/auditoria/auditStyles.ts') : name === '../../components/Modal' ? load('src/components/Modal.tsx') : require(name)) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },

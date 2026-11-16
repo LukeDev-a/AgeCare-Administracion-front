@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { PasswordField } from '../components/PasswordField';
 import { LoginError, lockoutRemaining, lockoutTime } from '../lib/loginLockout';
 
 export function LoginPage() {
@@ -67,10 +68,7 @@ export function LoginPage() {
             <label htmlFor="login-email">Correo electrónico</label>
             <input id="login-email" name="email" type="email" autoComplete="username" required value={email} onChange={event => { setEmail(event.target.value); setError(''); }} />
           </div>
-          <div className="login-field">
-            <label htmlFor="login-password">Contraseña</label>
-            <input id="login-password" name="password" type="password" autoComplete="current-password" required />
-          </div>
+          <PasswordField className="login-field" label="Contraseña" id="login-password" name="password" autoComplete="current-password" required />
           <div className="login-field">
             <label htmlFor="login-otp">Código MFA (opcional)</label>
             <input id="login-otp" name="otp_code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" />

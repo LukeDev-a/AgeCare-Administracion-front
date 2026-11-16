@@ -1,3 +1,4 @@
+import { useAutoFilters } from '../../hooks/useAutoFilters';
 import { useEffect, useState } from 'react';
 import { fetchAgents, fetchTickets, type Agent, type TicketsListResponse } from '../../api/tickets';
 import { fmt } from '../../lib/format';
@@ -14,15 +15,10 @@ const PAGE_SIZE = 25;
 export function TicketsPage() {
   const { user } = useAuth();
   const canManage = canManageTickets(user?.role);
-  const [page, setPage] = useState(1);
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
-  const [priority, setPriority] = useState('');
-  const [category, setCategory] = useState('');
-  const [role, setRole] = useState('');
-  const [assignedTo, setAssignedTo] = useState('');
-  const [order, setOrder] = useState('-created_at');
+  const { draft, filters, page, setPage, setField, reset } = useAutoFilters(
+    { search: '', status: '', priority: '', category: '', role: '', assignedTo: '', order: '-created_at' },
+    { delayedKeys: ['search'] });
+  const { search, status, priority, category, role, assignedTo, order } = filters;
   const [agents, setAgents] = useState<Agent[]>([]);
   const [agentsError, setAgentsError] = useState('');
   const [result, setResult] = useState<{ key: string; data: TicketsListResponse | null; error: string } | null>(null);
@@ -62,10 +58,6 @@ export function TicketsPage() {
     setReloadToken(token => token + 1);
   }
 
-  function handleSearch() {
-    setPage(1);
-    setSearch(searchInput.trim());
-  }
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
 
@@ -104,13 +96,10 @@ export function TicketsPage() {
             placeholder="Buscar por número, asunto o correo"
             aria-label="Buscar tickets"
             maxLength={120}
-            value={searchInput}
-            onChange={event => setSearchInput(event.target.value)}
-            onKeyDown={event => {
-              if (event.key === 'Enter') handleSearch();
-            }}
+            value={draft.search}
+            onChange={event => setField('search', event.target.value)}
           /></label>
-          <label className={ui.label}>Estado<select className={ui.field} aria-label="Filtrar por estado" value={status} onChange={event => { setPage(1); setStatus(event.target.value); }}>
+          <label className={ui.label}>Estado<select className={ui.field} aria-label="Filtrar por estado" value={status} onChange={event => { setField('status', event.target.value); }}>
             <option value="">Todos los estados</option>
             <option value="open">Abierto</option>
             <option value="in_progress">En curso</option>
@@ -118,30 +107,30 @@ export function TicketsPage() {
             <option value="resolved">Resuelto</option>
             <option value="closed">Cerrado</option>
           </select></label>
-          <label className={ui.label}>Prioridad<select className={ui.field} aria-label="Filtrar por prioridad" value={priority} onChange={event => { setPage(1); setPriority(event.target.value); }}>
+          <label className={ui.label}>Prioridad<select className={ui.field} aria-label="Filtrar por prioridad" value={priority} onChange={event => { setField('priority', event.target.value); }}>
             <option value="">Todas las prioridades</option>
             {Object.entries(TICKET_PRIORITY_META).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}
           </select></label>
-          <label className={ui.label}>Categoría<select className={ui.field} aria-label="Filtrar por categoría" value={category} onChange={event => { setPage(1); setCategory(event.target.value); }}>
+          <label className={ui.label}>Categoría<select className={ui.field} aria-label="Filtrar por categoría" value={category} onChange={event => { setField('category', event.target.value); }}>
             <option value="">Todas las categorías</option>
             {Object.entries(TICKET_CATEGORY_NAMES).map(([key, name]) => <option key={key} value={key}>{name}</option>)}
           </select></label>
-          <label className={ui.label}>Perfil del solicitante<select className={ui.field} aria-label="Filtrar por perfil" value={role} onChange={event => { setPage(1); setRole(event.target.value); }}>
+          <label className={ui.label}>Perfil del solicitante<select className={ui.field} aria-label="Filtrar por perfil" value={role} onChange={event => { setField('role', event.target.value); }}>
             <option value="">Todos los perfiles</option><option value="elder">Adulto mayor</option>
             <option value="family">Familiar</option><option value="caregiver">Cuidador</option><option value="doctor">Médico</option>
           </select></label>
-          <label className={ui.label}>Responsable<select className={ui.field} aria-label="Filtrar por responsable" value={assignedTo} onChange={event => { setPage(1); setAssignedTo(event.target.value); }}>
+          <label className={ui.label}>Responsable<select className={ui.field} aria-label="Filtrar por responsable" value={assignedTo} onChange={event => { setField('assignedTo', event.target.value); }}>
             <option value="">Todos los responsables</option>
             {Array.from(new Map([...agents.map(agent => [agent.id, agent.full_name] as const), ...(data?.items ?? []).flatMap(item => item.assigned_to ? [[item.assigned_to.admin_id, item.assigned_to.name] as const] : [])]).entries())
               .map(([id, name]) => <option key={id} value={id}>{name}</option>)}
             {assignedTo && !agents.some(agent => agent.id === assignedTo) && !data?.items.some(item => item.assigned_to?.admin_id === assignedTo) && <option value={assignedTo}>Responsable seleccionado</option>}
           </select></label>
-          <label className={ui.label}>Orden de la lista<select className={ui.field} aria-label="Ordenar tickets" value={order} onChange={event => { setPage(1); setOrder(event.target.value); }}>
+          <label className={ui.label}>Orden de la lista<select className={ui.field} aria-label="Ordenar tickets" value={order} onChange={event => { setField('order', event.target.value); }}>
             <option value="-created_at">Más recientes</option><option value="created_at">Más antiguos</option>
             <option value="-updated_at">Última modificación</option><option value="updated_at">Modificación más antigua</option>
             <option value="-priority">Mayor prioridad</option><option value="priority">Menor prioridad</option>
           </select></label>
-          <div className={`${ui.actions} tw:items-end`}><button className={`${ui.button} ${ui.primary}`} type="button" onClick={handleSearch}>Buscar</button>
+          <div className={`${ui.actions} tw:items-end`}><button className={ui.button} type="button" onClick={reset}>Restablecer filtros</button>
           <button className={ui.button} type="button" onClick={refresh}>Actualizar lista</button></div>
         </div>
         {(!canManage || agentsError) && <p className="tw:mt-4 tw:text-sm tw:text-muted">{agentsError || 'Responsables disponibles en esta página.'}</p>}

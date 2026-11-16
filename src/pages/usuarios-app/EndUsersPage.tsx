@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useAutoFilters } from '../../hooks/useAutoFilters';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { deactivateEndUser, fetchEndUser, fetchEndUsers, fetchPatient, fetchPatients,
   type DirectoryPage, type EndUserDetail, type EndUserSummary, type PatientDetail, type PatientSummary } from '../../api/endUsers';
@@ -9,10 +10,8 @@ type Kind = 'users' | 'patients';
 export function EndUsersPage() {
   const { user } = useAuth();
   const [kind, setKind] = useState<Kind>('users');
-  const [draft, setDraft] = useState('');
-  const [stateDraft, setStateDraft] = useState('');
-  const [filter, setFilter] = useState({ q: '', state: '' });
-  const [page, setPage] = useState(1);
+  const { draft, filters: filter, page, setPage, setField, reset } = useAutoFilters(
+    { q: '', state: '' }, { delayedKeys: ['q'] });
   const [revision, setRevision] = useState(0);
   const [list, setList] = useState<{ key: string; data?: DirectoryPage<EndUserSummary | PatientSummary>; error?: string }>({ key: '' });
   const [selection, setSelection] = useState<{ kind: Kind; id: string } | null>(null);
@@ -34,7 +33,7 @@ export function EndUsersPage() {
     })
       .catch(exception => { if (!controller.signal.aborted) setList({ key, error: exception instanceof Error ? exception.message : 'No se pudo cargar el directorio.' }); });
     return () => controller.abort();
-  }, [admin, kind, filter, page, revision, key]);
+  }, [admin, kind, filter, page, revision, key, setPage]);
   useEffect(() => {
     if (!admin || !selection) return;
     const controller = new AbortController();
@@ -44,10 +43,7 @@ export function EndUsersPage() {
     return () => controller.abort();
   }, [admin, selection, revision, detailKey]);
   function changeKind(next: Kind) {
-    setKind(next); setDraft(''); setStateDraft(''); setFilter({ q: '', state: '' }); setPage(1); setSelection(null); setNotice('');
-  }
-  function apply(event: FormEvent) {
-    event.preventDefault(); setFilter({ q: draft.trim(), state: stateDraft }); setPage(1); setSelection(null); setNotice('');
+    setKind(next); reset(); setSelection(null); setNotice('');
   }
   async function confirm(reason: string) {
     if (!deactivating || !admin) return;
@@ -74,11 +70,11 @@ export function EndUsersPage() {
       <p className="tw:mt-2 tw:mb-6 tw:max-w-3xl tw:text-muted">{kind === 'users'
         ? 'Una cuenta identifica a quien accede a la app. Puede participar como familiar, cuidador, médico o adulto mayor según su vínculo con cada paciente.'
         : 'El paciente es la persona que recibe cuidados, como el adulto mayor. Su ficha reúne a quienes lo acompañan y no exige que tenga una cuenta propia.'}</p>
-      <form className="tw:grid tw:items-end tw:gap-4 tw:lg:grid-cols-[minmax(0,1fr)_auto_auto]" onSubmit={apply}>
-        <label className={label}>{kind === 'users' ? 'Nombre o correo de la cuenta' : 'Nombre del paciente o correo de un miembro'}<input className={field} aria-label="Buscar usuarios o pacientes" placeholder={kind === 'users' ? 'Escribe un nombre o correo' : 'Escribe el nombre o correo vinculado'} maxLength={120} disabled={!!deactivating} value={draft} onChange={event => setDraft(event.target.value)} /></label>
-        {kind === 'users' && <label className={label}>Estado de la cuenta<select className={field} aria-label="Estado de la cuenta" value={stateDraft} disabled={!!deactivating} onChange={event => setStateDraft(event.target.value)}><option value="">Todas</option><option value="true">Activas</option><option value="false">Inactivas</option></select></label>}
-        <div className="tw:flex tw:flex-wrap tw:gap-3"><button type="submit" className={`${button} ${selected}`} disabled={!!deactivating}>Buscar</button><button type="button" className={button} disabled={!!deactivating} onClick={() => changeKind(kind)}>Limpiar</button></div>
-      </form>
+      <div className="tw:grid tw:items-end tw:gap-4 tw:lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+        <label className={label}>{kind === 'users' ? 'Nombre o correo de la cuenta' : 'Nombre del paciente o correo de un miembro'}<input className={field} aria-label="Buscar usuarios o pacientes" placeholder={kind === 'users' ? 'Escribe un nombre o correo' : 'Escribe el nombre o correo vinculado'} maxLength={120} disabled={!!deactivating} value={draft.q} onChange={event => { setField('q', event.target.value); setSelection(null); setNotice(''); }} /></label>
+        {kind === 'users' && <label className={label}>Estado de la cuenta<select className={field} aria-label="Estado de la cuenta" value={draft.state} disabled={!!deactivating} onChange={event => { setField('state', event.target.value); setSelection(null); setNotice(''); }}><option value="">Todas</option><option value="true">Activas</option><option value="false">Inactivas</option></select></label>}
+        <div className="tw:flex tw:flex-wrap tw:gap-3"><button type="button" className={button} disabled={!!deactivating} onClick={() => changeKind(kind)}>Restablecer filtros</button></div>
+      </div>
     </div>
     {notice && <p role="status" className={message}>{notice}</p>}
     {!loading && list.error && <p role="alert" className={message}>{list.error}</p>}

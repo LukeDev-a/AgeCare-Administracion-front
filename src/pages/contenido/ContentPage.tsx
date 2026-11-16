@@ -1,3 +1,4 @@
+import { useAutoFilters } from '../../hooks/useAutoFilters';
 import { useEffect, useState } from 'react';
 import { fetchContent, type ContentItem, type ContentListResponse } from '../../api/content';
 import { fmt } from '../../lib/format';
@@ -8,16 +9,14 @@ import { NewsCandidates } from './NewsCandidates';
 import { contentStyles as ui } from './contentStyles';
 
 export function ContentPage() {
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [type, setType] = useState('');
-  const [status, setStatus] = useState('');
+  const { draft, filters, page, setPage, setField, reset, replace } = useAutoFilters(
+    { search: '', type: '', status: '' }, { delayedKeys: ['search'] });
+  const { search, type, status } = filters;
   const [data, setData] = useState<ContentListResponse | null>(null);
   const [error, setError] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
-  const [page, setPage] = useState(1);
   const [section, setSection] = useState<'manage' | 'prepare'>('manage');
   const [editing, setEditing] = useState(false);
 
@@ -37,7 +36,7 @@ export function ContentPage() {
     return () => {
       cancelled = true;
     };
-  }, [search, type, status, page, reloadToken]);
+  }, [search, type, status, page, reloadToken, setPage]);
 
   // Consultar el avance, no volver a solicitar audio. Esperar la respuesta antes del siguiente ciclo.
   useEffect(() => {
@@ -58,10 +57,6 @@ export function ContentPage() {
     setReloadToken(token => token + 1);
   }
 
-  function handleSearch() {
-    setSearch(searchInput.trim());
-    setPage(1);
-  }
 
   const selectedItem = data?.items.find(item => item.id === selectedId) ?? null;
 
@@ -102,24 +97,21 @@ export function ContentPage() {
             type="search"
             placeholder="Buscar contenido"
             aria-label="Buscar contenido"
-            value={searchInput}
-            onChange={event => setSearchInput(event.target.value)}
-            onKeyDown={event => {
-              if (event.key === 'Enter') handleSearch();
-            }}
+            value={draft.search}
+            onChange={event => setField('search', event.target.value)}
           /></label>
-          <label className={ui.label}>Tipo de contenido<select className={ui.field} aria-label="Filtrar por tipo" value={type} onChange={event => { setType(event.target.value); setPage(1); }}>
+          <label className={ui.label}>Tipo de contenido<select className={ui.field} aria-label="Filtrar por tipo" value={type} onChange={event => { setField('type', event.target.value); }}>
             <option value="">Todos los tipos</option>
             <option value="news">Noticias</option>
             <option value="joke">Chistes</option>
           </select></label>
-          <label className={ui.label}>Estado<select className={ui.field} aria-label="Filtrar por estado" value={status} onChange={event => { setStatus(event.target.value); setPage(1); }}>
+          <label className={ui.label}>Estado<select className={ui.field} aria-label="Filtrar por estado" value={status} onChange={event => { setField('status', event.target.value); }}>
             <option value="">Todos los estados</option>
             <option value="draft">Borrador</option>
             <option value="published">Publicado</option>
             <option value="archived">Archivado</option>
           </select></label>
-          <button className={ui.button} type="button" onClick={handleSearch}>Buscar</button>
+          <button className={ui.button} type="button" onClick={reset}>Restablecer filtros</button>
         </div>
         <div className="tw:my-5 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4"><span className="tw:text-muted">{data ? `${fmt(data.total)} contenidos · ` : ''}Página {page}</span><div className={ui.actions}>
           <button className={ui.button} disabled={page <= 1} onClick={() => setPage(value => value - 1)}>Anterior</button>
@@ -151,7 +143,7 @@ export function ContentPage() {
       </section>
       <section id="content-prepare" hidden={section !== 'prepare'} aria-label="Preparar noticias">
         <NewsCandidates onDraft={(id, title) => {
-          setSearchInput(title); setSearch(title); setType(''); setStatus(''); setPage(1);
+          replace({ search: title, type: '', status: '' });
           setSelectedId(id); setShowNewForm(false); refresh(); setSection('manage');
         }} />
       </section>

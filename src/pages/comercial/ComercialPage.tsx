@@ -61,6 +61,7 @@ export function ComercialPage() {
         <h1 className="tw:text-2xl tw:font-bold tw:tracking-tight tw:sm:text-3xl">Uso comercial</h1>
         <p className="tw:mt-2 tw:max-w-2xl tw:text-base tw:text-muted">Consulta el crecimiento de usuarios, los planes y la evolución hacia el pago.</p>
       </div>
+      <button className="theme-toggle tw:min-h-11" type="button" onClick={() => { setPeriod('current_month'); setMonth(''); }}>Restablecer filtros</button>
       <button className="tw:inline-flex tw:min-h-11 tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-xl tw:border tw:border-solid tw:border-stroke tw:bg-panel tw:px-4 tw:py-2.5 tw:font-semibold tw:text-ink tw:hover:bg-canvas tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand" type="button" onClick={() => setReload(value => value + 1)}>
         <span aria-hidden="true">↻</span> Actualizar indicadores
       </button>

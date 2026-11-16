@@ -33,7 +33,7 @@ export function ModerationPage() {
       <div className="tw:mb-5 tw:grid tw:items-end tw:gap-4 tw:md:grid-cols-[1fr_1fr_auto]">
         <label className={s.label}>Tipo de contenido<select className={s.field} aria-label="Filtrar moderación" value={type} onChange={event => { setPage(1); setType(event.target.value); }}><option value="">Todos los tipos</option><option value="review">Reseñas</option><option value="caregiver_profile">Perfiles de cuidadoras</option><option value="photo">Fotos</option><option value="chat_message">Mensajes</option></select></label>
         <label className={s.label}>Estado de revisión<select className={s.field} aria-label="Estado de moderación" value={status} onChange={event => { setPage(1); setStatus(event.target.value); }}><option value="pending">Pendientes</option><option value="approved">Aprobados</option><option value="rejected">Rechazados</option></select></label>
-        <button className={s.button} type="button" disabled={loading} onClick={() => { setStatus('pending'); setType(''); setPage(1); }}>Ver todos los pendientes</button>
+        <button className={s.button} type="button" onClick={() => { setStatus('pending'); setType(''); setPage(1); }}>Restablecer filtros</button>
       </div>
       <p className={`tw:mb-5 ${s.muted}`}>{data ? `${fmt(data.total)} elementos · página ${data.page} · Los filtros se aplican al seleccionarlos.` : error ? 'Consulta no disponible' : 'Consultando elementos…'}</p>
       {notice && <p role="status" className={`tw:mb-5 ${s.notice}`}>{notice}</p>}
