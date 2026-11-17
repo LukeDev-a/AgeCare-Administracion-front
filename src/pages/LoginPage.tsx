@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { PasswordField } from '../components/PasswordField';
 import { LoginError, lockoutRemaining, lockoutTime } from '../lib/loginLockout';
 
 export function LoginPage() {
@@ -11,6 +10,7 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [email, setEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [lock, setLock] = useState<{ email: string; until: number } | null>(null);
   const [now, setNow] = useState(0);
   const submitting = useRef(false);
@@ -52,6 +52,8 @@ export function LoginPage() {
     }
   }
 
+  const passwordAction = showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña';
+
   return (
     <section className="login-screen">
       <div className="login-card">
@@ -68,7 +70,22 @@ export function LoginPage() {
             <label htmlFor="login-email">Correo electrónico</label>
             <input id="login-email" name="email" type="email" autoComplete="username" required value={email} onChange={event => { setEmail(event.target.value); setError(''); }} />
           </div>
-          <PasswordField className="login-field" label="Contraseña" id="login-password" name="password" autoComplete="current-password" required />
+          <div className="login-field">
+            <label htmlFor="login-password">Contraseña</label>
+            <div style={{ position: 'relative' }}>
+              <input id="login-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" required
+                autoCapitalize="none" autoCorrect="off" spellCheck={false} style={{ paddingRight: 44 }} />
+              <button type="button" aria-label={`${passwordAction} (Contraseña)`} title={passwordAction} aria-pressed={showPassword}
+                aria-controls="login-password" onClick={() => setShowPassword(current => !current)}
+                style={{ position: 'absolute', top: '50%', right: 4, transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, border: 0, borderRadius: 8, background: 'transparent', color: 'var(--ink-soft)', cursor: 'pointer' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                  <circle cx="12" cy="12" r="3" />
+                  {showPassword && <path d="m3 3 18 18" />}
+                </svg>
+              </button>
+            </div>
+          </div>
           <div className="login-field">
             <label htmlFor="login-otp">Código MFA</label>
             <input id="login-otp" name="otp_code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" />
