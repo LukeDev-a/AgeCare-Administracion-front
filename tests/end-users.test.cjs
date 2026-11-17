@@ -41,6 +41,7 @@ function page(items = [account], total = items.length) { return { ...source, ite
 const meta = load('src/lib/endUsersMeta.ts');
 const Detail = load('src/pages/usuarios-app/DirectoryDetail.tsx', { '../../lib/endUsersMeta': meta }).DirectoryDetail;
 const Dialog = load('src/pages/usuarios-app/DeactivateDialog.tsx').DeactivateDialog;
+const Modal = load('src/components/Modal.tsx').Modal;
 
 test('servicios separan usuarios finales del personal y envían confirmación/motivo sin secretos en URL', async () => {
   const calls = [];
@@ -74,7 +75,7 @@ test('detalle explica perfil por paciente, no ofrece edición clínica ni desact
   assert.ok(html.includes('Familiar') && html.includes('Cuidador/a') && html.includes('Paciente uno') && html.includes('Paciente dos'));
   assert.ok(html.includes('Desactivar cuenta'));
   const other = renderToStaticMarkup(React.createElement(Detail, { record: patient, onSelect() {}, onDeactivate() {}, onClose() {} }));
-  assert.ok(other.includes('no tiene miembros vinculados') && other.includes('no implica que exista una cuenta'));
+  assert.ok(other.includes('no tiene cuentas vinculadas') && other.includes('No es una cuenta de acceso'));
   assert.ok(!other.includes('Desactivar cuenta') && !other.includes('Editar') && !other.includes('Eliminar'));
 });
 
@@ -103,6 +104,7 @@ function screen(api, role = 'admin') {
   return mount('src/pages/usuarios-app/EndUsersPage.tsx', 'EndUsersPage', {
     '../../auth/AuthContext': { useAuth: () => ({ user: { role } }) }, '../../api/endUsers': api,
     './DirectoryDetail': { DirectoryDetail: Detail }, './DeactivateDialog': { DeactivateDialog: Dialog },
+    '../../components/Modal': { Modal },
   });
 }
 test('pantalla sin aviso superior consulta filtros/páginas y descarta respuestas tardías de otro directorio', async () => {
@@ -110,10 +112,10 @@ test('pantalla sin aviso superior consulta filtros/páginas y descarta respuesta
   const h = screen({ fetchEndUsers: (...args) => { calls.push(args.slice(0, 3)); return new Promise(resolve => pending.push(resolve)); },
     fetchPatients: async () => page([patient]), fetchEndUser: async () => account, fetchPatient: async () => patient });
   await h.settle(); assert.ok(!h.html().includes('Datos de demostración'));
-  h.find(n => n.type === 'button' && n.props.children === 'Pacientes').props.onClick(); await h.settle();
+  h.find(n => n.type === 'button' && n.props['aria-pressed'] === false && renderToStaticMarkup(n).includes('Adultos mayores')).props.onClick(); await h.settle();
   pending[0](page([{ ...account, full_name: 'Respuesta antigua' }])); await h.settle();
   assert.ok(h.html().includes('Paciente uno') && !h.html().includes('Respuesta antigua'));
-  h.find(n => n.type === 'button' && n.props.children === 'Usuarios de la app').props.onClick(); await h.settle();
+  h.find(n => n.type === 'button' && n.props['aria-pressed'] === false && renderToStaticMarkup(n).includes('Cuentas de la aplicación')).props.onClick(); await h.settle();
   pending[1](page([account], 32)); await h.settle();
   h.find(n => n.type === 'button' && n.props.children === 'Siguiente').props.onClick(); await h.settle();
   assert.equal(calls.at(-1)[2], 2);
@@ -145,9 +147,14 @@ test('confirmar desactivación actualiza estado y confirma conservación de vín
     deactivateEndUser: async (id, reason) => { assert.equal(id, 'account-1'); assert.equal(reason, 'Solicitud de prueba'); active = false;
       return { ...source, user: { ...account, is_active: false }, mobile_sessions_revoked: false }; } });
   await h.settle();
-  h.find(n => n.type === 'button' && n.props.children === 'Ver detalle').props.onClick(); await h.settle();
+  h.find(n => n.type === 'button' && n.props.children === 'Ver vínculos y roles').props.onClick(); await h.settle();
+  assert.equal(h.find(n => n.type === Modal).props.title, 'Vínculos y roles');
   h.find(n => n.type === Detail).props.onDeactivate(account);
+  assert.equal(h.find(n => n.type === Modal), undefined);
   await h.find(n => n.type === Dialog).props.onConfirm('Solicitud de prueba'); await h.settle();
   assert.ok(h.html().includes('Inactiva') && h.html().includes('Cuenta desactivada. Se conservan sus datos y vínculos de cuidado'));
   assert.equal(h.find(n => n.type === Dialog), undefined);
+  assert.ok(h.find(n => n.type === Modal));
+  h.find(n => n.type === Modal).props.onClose();
+  assert.equal(h.find(n => n.type === Modal), undefined);
 });

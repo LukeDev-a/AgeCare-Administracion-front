@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import type { ActivityRequestInit } from '../lib/requestActivity';
 
 export type RoleKey = 'family' | 'caregiver' | 'elder' | 'doctor';
 
@@ -74,8 +75,8 @@ export interface TicketsList {
   items: TicketSummaryItem[];
 }
 
-async function getJson<T>(path: string): Promise<T> {
-  const response = await apiFetch(path);
+async function getJson<T>(path: string, options?: ActivityRequestInit): Promise<T> {
+  const response = await apiFetch(path, options);
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     throw new Error(body?.error?.message ?? 'No fue posible cargar usuarios y soporte.');
@@ -83,8 +84,8 @@ async function getJson<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export const fetchRolesSummary = (days = 30) => getJson<RolesSummary>(`/metrics/roles/summary?days=${encodeURIComponent(days)}`);
-export const fetchRolesWeekly = (weeks = 8) => getJson<RolesWeekly>(`/metrics/roles/weekly-active?weeks=${encodeURIComponent(weeks)}`);
-export const fetchSupportSummary = () => getJson<SupportSummary>('/support/summary');
-export const fetchTicketsByCategory = (days = 30) => getJson<TicketsByCategory>(`/support/tickets/by-category?days=${encodeURIComponent(days)}`);
-export const fetchRecentTickets = () => getJson<TicketsList>('/support/tickets?page=1&page_size=6&order=-created_at');
+export const fetchRolesSummary = (days = 30, options?: ActivityRequestInit) => getJson<RolesSummary>(`/metrics/roles/summary?days=${encodeURIComponent(days)}`, options);
+export const fetchRolesWeekly = (weeks = 8, options?: ActivityRequestInit) => getJson<RolesWeekly>(`/metrics/roles/weekly-active?weeks=${encodeURIComponent(weeks)}`, options);
+export const fetchSupportSummary = (options?: ActivityRequestInit) => getJson<SupportSummary>('/support/summary', options);
+export const fetchTicketsByCategory = (days = 30, options?: ActivityRequestInit) => getJson<TicketsByCategory>(`/support/tickets/by-category?days=${encodeURIComponent(days)}`, options);
+export const fetchRecentTickets = (options?: ActivityRequestInit) => getJson<TicketsList>('/support/tickets?page=1&page_size=6&order=-created_at', options);

@@ -45,8 +45,8 @@ test('perfil muestra permisos de pacientes, deduplica módulos y distingue MFA o
     ...profile, full_name: '<script>Nombre</script>', permissions: ['end_users', 'end_users'],
     last_login_at: 'fecha inválida', mfa_enabled: false, mfa_required: false,
   } }));
-  assert.ok(html.includes('Usuarios y pacientes'));
-  assert.equal((html.match(/Usuarios y pacientes/g) || []).length, 1);
+  assert.ok(html.includes('Cuentas y adultos mayores'));
+  assert.equal((html.match(/Cuentas y adultos mayores/g) || []).length, 1);
   assert.ok(html.includes('Sin información disponible'));
   assert.ok(html.includes('Opcional para tu cuenta'));
   assert.ok(html.includes('Sin configurar'));

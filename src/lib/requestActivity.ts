@@ -17,13 +17,17 @@ function setVisible(value: boolean) {
   listeners.forEach(listener => listener());
 }
 
-export async function activityFetch(input: RequestInfo | URL, options?: RequestInit): Promise<Response> {
+export type ActivityRequestInit = RequestInit & { background?: boolean };
+
+export async function activityFetch(input: RequestInfo | URL, options?: ActivityRequestInit): Promise<Response> {
+  const { background, ...requestOptions } = options ?? {};
+  if (background) return fetch(input, requestOptions);
   clearTimeout(hideTimer);
   pending += 1;
   if (!visible) shownAt = Date.now();
   setVisible(true);
   try {
-    return await fetch(input, options);
+    return await fetch(input, requestOptions);
   } finally {
     pending -= 1;
     if (pending === 0) {

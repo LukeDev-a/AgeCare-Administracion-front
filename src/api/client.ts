@@ -1,5 +1,5 @@
 import { createSessionClient } from '../lib/sessionClient';
-import { activityFetch } from '../lib/requestActivity';
+import { activityFetch, type ActivityRequestInit } from '../lib/requestActivity';
 
 export const publicFetch = activityFetch;
 
@@ -34,6 +34,6 @@ const session = createSessionClient(API_BASE_URL, () => {}, () => {
   window.dispatchEvent(new Event('agecare-session-expired'));
 }, activityFetch);
 
-export const apiFetch = session.request;
+export const apiFetch = (path: string, options?: ActivityRequestInit) => session.request(path, options);
 export const ensureFreshSession = session.ensureFresh;
 export const logoutSession = session.logout;

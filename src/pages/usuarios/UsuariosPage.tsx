@@ -1,5 +1,7 @@
 import { useAutoFilters, integerFilter } from '../../hooks/useAutoFilters';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useAnalyticsRemote as useRemote } from '../../hooks/useAnalyticsRemote';
+import type { ActivityRequestInit } from '../../lib/requestActivity';
 import { fetchRecentTickets, fetchRolesSummary, fetchRolesWeekly, fetchSupportSummary, fetchTicketsByCategory } from '../../api/usersSupport';
 import { fmt, formatDuration, percent } from '../../lib/format';
 import { ROLE_META, roleLabel } from '../../lib/roleMeta';
@@ -7,18 +9,6 @@ import { TICKET_PRIORITY_META, TICKET_STATUS_META } from '../../lib/ticketMeta';
 import { usersSupportDate, weeklyDayLabel, weeklyRangeLabel } from '../../lib/usersSupportMeta';
 import { RoleWeeklyChart } from './RoleWeeklyChart';
 import { TicketsCategoryChart } from './TicketsCategoryChart';
-
-function useRemote<T>(key: string, load: () => Promise<T>) {
-  const [state, setState] = useState<{ key: string; data: T | null; error: string }>({ key: '', data: null, error: '' });
-  useEffect(() => {
-    let cancelled = false;
-    load().then(data => { if (!cancelled) setState({ key, data, error: '' }); })
-      .catch((error: unknown) => { if (!cancelled) setState({ key, data: null,
-        error: error instanceof Error ? error.message : 'No fue posible consultar los datos.' }); });
-    return () => { cancelled = true; };
-  }, [key, load]);
-  return state.key === key ? state : { key, data: null, error: '' };
-}
 
 const responseDelta = (value: number | null) => value == null ? 'Sin comparación disponible'
   : `${value > 0 ? '+' : ''}${value.toLocaleString('es-CL', { maximumFractionDigits: 1 })} h frente a los 30 días anteriores`;
@@ -33,9 +23,9 @@ export function UsuariosPage() {
   const categoryFilter = useAutoFilters({ value: '30' }, { delayedKeys: ['value'], validate: row => integerFilter(row.value, 1, 365, 'Últimos días') });
   const categoryDays = Number(categoryFilter.filters.value);
   const [reload, setReload] = useState(0);
-  const rolesLoad = useCallback(() => fetchRolesSummary(days), [days]);
-  const weeklyLoad = useCallback(() => fetchRolesWeekly(weeks), [weeks]);
-  const categoryLoad = useCallback(() => fetchTicketsByCategory(categoryDays), [categoryDays]);
+  const rolesLoad = useCallback((options?: ActivityRequestInit) => fetchRolesSummary(days, options), [days]);
+  const weeklyLoad = useCallback((options?: ActivityRequestInit) => fetchRolesWeekly(weeks, options), [weeks]);
+  const categoryLoad = useCallback((options?: ActivityRequestInit) => fetchTicketsByCategory(categoryDays, options), [categoryDays]);
   const rolesState = useRemote(`roles:${days}:${reload}`, rolesLoad);
   const weeklyState = useRemote(`weekly:${weeks}:${reload}`, weeklyLoad);
   const supportState = useRemote(`support:${reload}`, fetchSupportSummary);

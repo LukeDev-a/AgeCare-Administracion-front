@@ -15,6 +15,7 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   '/funcional': 'metrics', '/usuarios-app': 'end_users', '/juegos': 'games', '/tickets': 'support',
   '/contenido': 'content', '/catalogos': 'marketplace', '/moderacion': 'moderation',
   '/auditoria': 'audit', '/cuentas': 'staff', '/config': 'settings', '/legales': 'legal',
+  '/pagos': 'staff',
 };
 
 export function canAccessRoute(path: string, permissions: readonly string[] = []): boolean {

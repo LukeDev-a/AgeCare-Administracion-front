@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useAnalyticsRemote as useRemote } from '../../hooks/useAnalyticsRemote';
+import type { ActivityRequestInit } from '../../lib/requestActivity';
 import { fetchCommercialFunnel, fetchCommercialPlans, fetchCommercialRegistrations, fetchCommercialSummary } from '../../api/commercial';
 import { delta, fmt, money, moneyOrDash, percent } from '../../lib/format';
 import { FunnelChart } from './FunnelChart';
@@ -14,18 +16,6 @@ const PERIODS = [
 ] as const;
 type PeriodKey = (typeof PERIODS)[number]['key'];
 
-function useRemote<T>(key: string, load: () => Promise<T>) {
-  const [state, setState] = useState<{ key: string; data: T | null; error: string }>({ key: '', data: null, error: '' });
-  useEffect(() => {
-    let cancelled = false;
-    load().then(data => { if (!cancelled) setState({ key, data, error: '' }); })
-      .catch((error: unknown) => { if (!cancelled) setState({ key, data: null,
-        error: error instanceof Error ? error.message : 'No fue posible consultar los datos.' }); });
-    return () => { cancelled = true; };
-  }, [key, load]);
-  return { data: state.key === key ? state.data : null, error: state.key === key ? state.error : '', previous: state.data };
-}
-
 const count = (value: number | null) => value == null ? 'Sin datos' : fmt(value);
 const rate = (value: number | null) => value == null ? 'Sin datos' : percent(value);
 
@@ -33,9 +23,9 @@ export function ComercialPage() {
   const [period, setPeriod] = useState<PeriodKey>('current_month');
   const [month, setMonth] = useState('');
   const [reload, setReload] = useState(0);
-  const summaryLoad = useCallback(() => fetchCommercialSummary(period), [period]);
-  const registrationsLoad = useCallback(() => fetchCommercialRegistrations(period), [period]);
-  const funnelLoad = useCallback(() => fetchCommercialFunnel(month || undefined), [month]);
+  const summaryLoad = useCallback((options?: ActivityRequestInit) => fetchCommercialSummary(period, options), [period]);
+  const registrationsLoad = useCallback((options?: ActivityRequestInit) => fetchCommercialRegistrations(period, options), [period]);
+  const funnelLoad = useCallback((options?: ActivityRequestInit) => fetchCommercialFunnel(month || undefined, options), [month]);
   const summaryState = useRemote(`${period}:${reload}`, summaryLoad);
   const registrationsState = useRemote(`${period}:${reload}`, registrationsLoad);
   const plansState = useRemote(`plans:${reload}`, fetchCommercialPlans);

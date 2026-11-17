@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import type { ActivityRequestInit } from '../lib/requestActivity';
 
 export type OpsStatusKey = 'operational' | 'degraded' | 'outage';
 export type OpsWindow = '1h' | '24h' | '7d';
@@ -80,8 +81,8 @@ export interface CriticalProcesses {
   computed_at: string | null;
 }
 
-async function getJson<T>(path: string): Promise<T> {
-  const response = await apiFetch(path);
+async function getJson<T>(path: string, options?: ActivityRequestInit): Promise<T> {
+  const response = await apiFetch(path, options);
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     throw new Error(body?.error?.message ?? 'No fue posible cargar el estado operativo.');
@@ -89,11 +90,11 @@ async function getJson<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export const fetchOpsStatus = () => getJson<OpsStatus>('/ops/status');
-export const fetchOpsLatency = (window: OpsWindow = '1h', components: string[] = []) => {
+export const fetchOpsStatus = (options?: ActivityRequestInit) => getJson<OpsStatus>('/ops/status', options);
+export const fetchOpsLatency = (window: OpsWindow = '1h', components: string[] = [], options?: ActivityRequestInit) => {
   const params = new URLSearchParams({ window });
   components.forEach(key => params.append('components', key));
-  return getJson<OpsLatency>(`/ops/latency?${params}`);
+  return getJson<OpsLatency>(`/ops/latency?${params}`, options);
 };
 export const fetchOpsIncidents = () => getJson<OpsIncidents>('/ops/incidents?days=30');
-export const fetchCriticalProcesses = () => getJson<CriticalProcesses>('/ops/critical-processes');
+export const fetchCriticalProcesses = (options?: ActivityRequestInit) => getJson<CriticalProcesses>('/ops/critical-processes', options);

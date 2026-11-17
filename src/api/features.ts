@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import type { ActivityRequestInit } from '../lib/requestActivity';
 
 export interface AdoptionCalculation {
   role: string;
@@ -56,8 +57,8 @@ export interface FeatureAlerts {
   alerts: FeatureAlert[];
 }
 
-async function getJson<T>(path: string): Promise<T> {
-  const response = await apiFetch(path);
+async function getJson<T>(path: string, options?: ActivityRequestInit): Promise<T> {
+  const response = await apiFetch(path, options);
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     throw new Error(body?.error?.message ?? 'No fue posible cargar el uso por funcionalidad.');
@@ -65,6 +66,6 @@ async function getJson<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export const fetchFeatureAdoption = (days: number) => getJson<FeatureAdoption>(`/metrics/features/adoption?days=${days}`);
-export const fetchTopFeatures = (days: number, limit = 1) => getJson<TopFeatures>(`/metrics/features/top?days=${days}&limit=${limit}`);
-export const fetchFeatureAlerts = (days: number, threshold = 0.15) => getJson<FeatureAlerts>(`/metrics/features/alerts?days=${days}&threshold=${threshold}`);
+export const fetchFeatureAdoption = (days: number, options?: ActivityRequestInit) => getJson<FeatureAdoption>(`/metrics/features/adoption?days=${days}`, options);
+export const fetchTopFeatures = (days: number, limit = 1, options?: ActivityRequestInit) => getJson<TopFeatures>(`/metrics/features/top?days=${days}&limit=${limit}`, options);
+export const fetchFeatureAlerts = (days: number, threshold = 0.15, options?: ActivityRequestInit) => getJson<FeatureAlerts>(`/metrics/features/alerts?days=${days}&threshold=${threshold}`, options);

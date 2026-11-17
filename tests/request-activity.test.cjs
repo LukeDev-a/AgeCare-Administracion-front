@@ -17,6 +17,17 @@ function setup(fetch) {
   return { ...scope.exports, tick: value => { clock = value; }, timer: () => timer };
 }
 
+test('consulta silenciosa no activa el indicador ni envía la opción interna al servidor', async () => {
+  let received;
+  const activity = setup(async (input, options) => { received = { input, options }; return 'ok'; });
+  const headers = { Authorization: 'Bearer token-ficticio' };
+  assert.equal(await activity.activityFetch('/count', { background: true, headers }), 'ok');
+  assert.equal(activity.getRequestActivity(), false);
+  assert.equal(activity.timer(), undefined);
+  assert.equal(received.options.background, undefined);
+  assert.equal(received.options.headers, headers);
+});
+
 test('la carga cubre consultas simultáneas y conserva la visibilidad mínima sin retrasar respuestas', async () => {
   const resolve = [];
   const activity = setup(() => new Promise(done => resolve.push(done)));

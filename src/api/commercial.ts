@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import type { ActivityRequestInit } from '../lib/requestActivity';
 
 export interface CommercialMetadata {
   data_origin: string;
@@ -77,8 +78,8 @@ export interface CommercialFunnel extends CommercialMetadata {
   downloads_stale: boolean;
 }
 
-async function getJson<T>(path: string): Promise<T> {
-  const response = await apiFetch(path);
+async function getJson<T>(path: string, options?: ActivityRequestInit): Promise<T> {
+  const response = await apiFetch(path, options);
   if (!response.ok) {
     const data = await response.json().catch(() => null);
     throw new Error(data?.error?.message ?? 'No fue posible cargar los datos de uso comercial.');
@@ -86,13 +87,13 @@ async function getJson<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export const fetchCommercialSummary = (period: string) =>
-  getJson<CommercialSummary>(`/metrics/commercial/summary?period=${period}`);
+export const fetchCommercialSummary = (period: string, options?: ActivityRequestInit) =>
+  getJson<CommercialSummary>(`/metrics/commercial/summary?period=${period}`, options);
 
-export const fetchCommercialRegistrations = (period: string) =>
-  getJson<CommercialRegistrations>(`/metrics/commercial/registrations?period=${period}`);
+export const fetchCommercialRegistrations = (period: string, options?: ActivityRequestInit) =>
+  getJson<CommercialRegistrations>(`/metrics/commercial/registrations?period=${period}`, options);
 
-export const fetchCommercialPlans = () => getJson<CommercialPlans>('/metrics/commercial/plans');
+export const fetchCommercialPlans = (options?: ActivityRequestInit) => getJson<CommercialPlans>('/metrics/commercial/plans', options);
 
-export const fetchCommercialFunnel = (month?: string) => getJson<CommercialFunnel>(
-  '/metrics/commercial/funnel' + (month ? `?cohort_month=${encodeURIComponent(month)}` : ''));
+export const fetchCommercialFunnel = (month?: string, options?: ActivityRequestInit) => getJson<CommercialFunnel>(
+  '/metrics/commercial/funnel' + (month ? `?cohort_month=${encodeURIComponent(month)}` : ''), options);

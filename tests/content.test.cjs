@@ -393,6 +393,125 @@ test('publicar ahora confirma que se elimina la programación, cancelar no enví
   assert.equal(closed, 1, 'publicar correctamente vuelve al listado; cancelar o fallar conserva el modal');
 });
 
+test('programar sin audio exige fecha motivo y revisión, conserva errores y permite cancelar la programación', async () => {
+  const original = { id: 'optional', title: 'Noticia revisada', body: 'Texto aprobado para lectura', tags: [], type: 'news', status: 'draft',
+    text_version: 1, approved_version: 1, publish_at: null, updated_at: '2026-11-17',
+    audio_available: false, audio_status: 'failed', audio_error: 'INVALID_AUDIO_OUTPUT', provenance: null };
+  let attempts = 0, closed = 0, payload, cancelled;
+  const props = { item: original, onChanged(saved) { if (saved) props.item = saved; }, onDeleted() {}, onClose() { closed++; } };
+  const h = mount('src/pages/contenido/ContentDetail.tsx', 'ContentDetail', {
+    '../../api/content': {
+      scheduleContentWithoutAudio: async (id, version, reason, confirmed, date) => {
+        payload = { id, version, reason, confirmed, date };
+        if (++attempts === 1) throw new Error('No se pudo programar');
+        return { ...original, publish_at: date, scheduled_without_audio: true, scheduled_audio_exception_reason: reason };
+      },
+      updateContent: async (_id, value) => { cancelled = value; return { ...original, publish_at: null, scheduled_without_audio: false }; },
+    },
+    '../../auth/AuthContext': { useAuth: () => ({ user: { role: 'editor' } }) },
+    '../../lib/contentMeta': load('src/lib/contentMeta.ts'), '../../lib/format': { ticketDate: String },
+  }, props);
+  const button = label => h.find(n => n.type === 'button' && n.props.children === label);
+  assert.equal(h.find(n => n.type === 'input' && n.props.type === 'datetime-local').props.disabled, false);
+  assert.equal(button('Programar sin audio').props.disabled, true);
+  h.find(n => n.type === 'input' && n.props.type === 'datetime-local').props.onChange({ target: { value: '2026-12-12T15:30' } });
+  assert.equal(button('Programar sin audio').props.disabled, false);
+  button('Programar sin audio').props.onClick();
+  assert.match(h.html(), /Si el audio está listo, se incluirá/);
+  assert.equal(attempts, 0);
+  assert.equal(button('Confirmar y programar sin audio').props.disabled, true);
+  h.find(n => n.type === 'textarea').props.onChange({ target: { value: 'Audio fallido; texto revisado para la fecha elegida.' } });
+  h.find(n => n.type === 'input' && n.props.type === 'checkbox').props.onChange({ target: { checked: true } });
+  button('Volver sin programar').props.onClick();
+  assert.equal(attempts, 0);
+  button('Programar sin audio').props.onClick();
+  button('Confirmar y programar sin audio').props.onClick();
+  await new Promise(setImmediate);
+  assert.match(h.html(), /No se pudo programar/);
+  assert.match(h.find(n => n.type === 'textarea').props.value, /Audio fallido/);
+  assert.equal(closed, 0);
+  button('Confirmar y programar sin audio').props.onClick();
+  await new Promise(setImmediate);
+  assert.equal(attempts, 2); assert.equal(payload.version, 1); assert.equal(payload.confirmed, true);
+  assert.equal(payload.date, new Date('2026-12-12T15:30').toISOString());
+  assert.equal(h.tree().props.dirty, false);
+  assert.match(h.html(), /Se publicará aunque falte el audio/);
+  button('Cancelar programación').props.onClick();
+  await new Promise(setImmediate);
+  assert.deepEqual(JSON.parse(JSON.stringify(cancelled)), { publish_at: null });
+  assert.equal(props.item.scheduled_without_audio, false);
+});
+
+test('el servicio programa sin audio enviando fecha UTC y autorización explícita', async () => {
+  let path, options;
+  const api = load('src/api/content.ts', { './client': { apiFetch: async (url, config) => {
+    path = url; options = config; return { ok: true, json: async () => ({ status: 'draft', scheduled_without_audio: true }) };
+  } } });
+  await api.scheduleContentWithoutAudio('id', 2, 'Texto revisado tras fallo.', true, '2026-12-12T18:30:00Z');
+  assert.equal(path, '/content/items/id/schedule-without-audio');
+  assert.deepEqual(JSON.parse(options.body), { version: 2, reason: 'Texto revisado tras fallo.', review_confirmed: true, publish_at: '2026-12-12T18:30:00Z' });
+});
+
+test('publicar sin audio exige motivo y revisión, conserva formulario ante error y vuelve al listado al publicar', async () => {
+  const item = { id: 'failed-audio', title: 'Noticia revisada', body: 'Texto aprobado para lectura', tags: [], type: 'news', status: 'draft',
+    text_version: 2, approved_version: 2, publish_at: '2026-12-12T18:30:00Z', updated_at: '2026-11-17',
+    audio_available: false, audio_status: 'failed', audio_error: 'AUDIO_CONTENT_BLOCKED', provenance: null };
+  let attempts = 0, closed = 0, changed = 0;
+  const h = mount('src/pages/contenido/ContentDetail.tsx', 'ContentDetail', {
+    '../../api/content': { publishContentWithoutAudio: async (id, version, reason, confirmed) => {
+      assert.equal(id, item.id); assert.equal(version, 2); assert.equal(reason, 'El texto se revisó y se publicará para lectura.'); assert.equal(confirmed, true);
+      if (++attempts === 1) throw new Error('No se pudo publicar');
+    } },
+    '../../auth/AuthContext': { useAuth: () => ({ user: { role: 'editor' } }) },
+    '../../lib/contentMeta': load('src/lib/contentMeta.ts'), '../../lib/format': { ticketDate: String },
+  }, { item, onChanged() { changed++; }, onDeleted() {}, onClose() { closed++; } });
+  const button = label => h.find(n => n.type === 'button' && n.props.children === label);
+  button('Publicar sin audio').props.onClick();
+  assert.equal(attempts, 0);
+  assert.match(h.html(), /Se eliminará la programación/);
+  assert.equal(button('Confirmar y publicar sin audio').props.disabled, true);
+  h.find(n => n.type === 'textarea').props.onChange({ target: { value: 'El texto se revisó y se publicará para lectura.' } });
+  assert.equal(button('Confirmar y publicar sin audio').props.disabled, true);
+  h.find(n => n.type === 'input' && n.props.type === 'checkbox').props.onChange({ target: { checked: true } });
+  assert.equal(button('Confirmar y publicar sin audio').props.disabled, false);
+  button('Volver sin publicar').props.onClick();
+  assert.equal(attempts, 0);
+  button('Publicar sin audio').props.onClick();
+  assert.match(h.find(n => n.type === 'textarea').props.value, /El texto se revisó/);
+  button('Confirmar y publicar sin audio').props.onClick();
+  await new Promise(setImmediate);
+  assert.match(h.html(), /No se pudo publicar/);
+  assert.equal(closed, 0); assert.equal(changed, 0);
+  assert.match(h.find(n => n.type === 'textarea').props.value, /El texto se revisó/);
+  button('Confirmar y publicar sin audio').props.onClick();
+  await new Promise(setImmediate);
+  assert.equal(attempts, 2); assert.equal(closed, 1); assert.equal(changed, 1);
+});
+
+test('la excepción no aparece para audio pendiente, en proceso, sin fallo o texto sin aprobar', () => {
+  const base = { id: 'not-ready', title: 'Noticia', body: 'Texto revisado', tags: [], type: 'news', status: 'draft', text_version: 1,
+    approved_version: 1, publish_at: null, updated_at: '2026-11-17', audio_available: false, audio_error: 'INVALID_AUDIO_OUTPUT', provenance: null };
+  for (const changes of [{ audio_status: 'pending' }, { audio_status: 'queued' }, { audio_status: 'waiting_quota' },
+    { audio_status: 'failed', audio_error: null }, { audio_status: 'failed', approved_version: null }]) {
+    const h = mount('src/pages/contenido/ContentDetail.tsx', 'ContentDetail', {
+      '../../api/content': {}, '../../auth/AuthContext': { useAuth: () => ({ user: { role: 'editor' } }) },
+      '../../lib/contentMeta': load('src/lib/contentMeta.ts'), '../../lib/format': { ticketDate: String },
+    }, { item: { ...base, ...changes }, onChanged() {}, onDeleted() {} });
+    assert.equal(h.find(n => n.type === 'button' && n.props.children === 'Publicar sin audio'), undefined);
+  }
+});
+
+test('el servicio de publicación sin audio envía versión motivo y revisión explícitos', async () => {
+  let path, options;
+  const api = load('src/api/content.ts', { './client': { apiFetch: async (url, config) => {
+    path = url; options = config; return { ok: true, json: async () => ({ status: 'published', audio_available: false }) };
+  } } });
+  await api.publishContentWithoutAudio('content-id', 3, 'Audio fallido y texto revisado.', true);
+  assert.equal(path, '/content/items/content-id/publish-without-audio');
+  assert.equal(options.method, 'POST');
+  assert.deepEqual(JSON.parse(options.body), { version: 3, reason: 'Audio fallido y texto revisado.', review_confirmed: true });
+});
+
 test('eliminar exige confirmación interna, cancelar conserva edición y un fallo permite reintentar', async () => {
   const item = { id: 'archived', title: 'Noticia para eliminar', body: 'Texto que se conserva en el historial', tags: [], type: 'news', status: 'archived',
     text_version: 1, approved_version: 1, publish_at: null, updated_at: '2026-11-11', audio_available: true, audio_status: 'ready', provenance: null };

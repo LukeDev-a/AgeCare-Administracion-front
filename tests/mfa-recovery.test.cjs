@@ -7,9 +7,10 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 
 function load(path, dependencies = {}, globals = {}) {
-  const scope = { exports: {}, URLSearchParams, Error, require: name => dependencies[name]
+  const scope = { exports: {}, URLSearchParams, Error, window: { addEventListener() {}, removeEventListener() {} }, require: name => dependencies[name]
     ?? (name === '../../components/PasswordField' ? load('src/components/PasswordField.tsx')
-      : name === './staffStyles' ? load('src/pages/cuentas/staffStyles.ts') : require(name)), ...globals };
+      : name === './staffStyles' ? load('src/pages/cuentas/staffStyles.ts')
+      : name === '../../lib/mfaRecoveryEvents' ? { MFA_RECOVERY_UPDATED: 'updated', notifyMfaRecoveryChanged() {} } : require(name)), ...globals };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, scope);

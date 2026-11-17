@@ -22,6 +22,7 @@ import { SettingsPage } from './pages/configuracion/SettingsPage';
 import { EndUsersPage } from './pages/usuarios-app/EndUsersPage';
 import { PasswordResetPage } from './pages/acceso/PasswordResetPage';
 import { MfaRecoveryPage } from './pages/acceso/MfaRecoveryPage';
+import { PaymentsPage } from './pages/pagos/PaymentsPage';
 
 export function App() {
   return (
@@ -45,6 +46,7 @@ export function App() {
         <Route path="/usuarios-app" element={<ProtectedRoute adminOnly><EndUsersPage /></ProtectedRoute>} />
         <Route path="/funcional" element={<FuncionalPage />} />
         <Route path="/juegos" element={<JuegosPage />} />
+        <Route path="/pagos" element={<ProtectedRoute adminOnly><PaymentsPage /></ProtectedRoute>} />
         <Route path="/tickets" element={<TicketsPage />} />
         <Route path="/contenido" element={<ContentPage />} />
         <Route path="/catalogos" element={<MarketplacePage />} />

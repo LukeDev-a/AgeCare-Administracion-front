@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useAnalyticsRemote as useRemote } from '../../hooks/useAnalyticsRemote';
+import type { ActivityRequestInit } from '../../lib/requestActivity';
 import { fetchCriticalProcesses, fetchOpsLatency, fetchOpsStatus, type OpsWindow } from '../../api/operational';
 import { percent } from '../../lib/format';
 import { getOpsStatus } from '../../lib/statusMeta';
@@ -8,27 +10,15 @@ import { OpsComponentCard } from './OpsComponentCard';
 import { IncidentsPanel } from './IncidentsPanel';
 import { LoadingIndicator } from './LoadingIndicator';
 
-function useRemote<T>(key: string, load: () => Promise<T>) {
-  const [state, setState] = useState<{ key: string; data: T | null; error: string }>({ key: '', data: null, error: '' });
-  useEffect(() => {
-    let cancelled = false;
-    load().then(data => { if (!cancelled) setState({ key, data, error: '' }); })
-      .catch((error: unknown) => { if (!cancelled) setState({ key, data: null,
-        error: error instanceof Error ? error.message : 'No fue posible consultar los datos.' }); });
-    return () => { cancelled = true; };
-  }, [key, load]);
-  return state.key === key ? state : { key, data: null, error: '' };
-}
-
 export function OperativoPage() {
   const [section, setSection] = useState('summary');
   const [window, setWindow] = useState<OpsWindow>('1h');
   const [selected, setSelected] = useState<string[]>(OPS_COMPONENTS.map(([key]) => key).filter(key => key !== 'push' && key !== 'ai_assistant'));
   const [reload, setReload] = useState(0);
-  const latencyLoad = useCallback(() => fetchOpsLatency(window, selected), [window, selected]);
-  const statusState = useRemote(`status:${reload}`, fetchOpsStatus);
-  const latencyState = useRemote(`${window}:${selected.join(',')}:${reload}`, latencyLoad);
-  const processState = useRemote(`processes:${reload}`, fetchCriticalProcesses);
+  const latencyLoad = useCallback((options?: ActivityRequestInit) => fetchOpsLatency(window, selected, options), [window, selected]);
+  const statusState = useRemote(`status:${reload}`, fetchOpsStatus, section !== 'incidents');
+  const latencyState = useRemote(`${window}:${selected.join(',')}:${reload}`, latencyLoad, section !== 'incidents');
+  const processState = useRemote(`processes:${reload}`, fetchCriticalProcesses, section !== 'incidents');
   const status = statusState.data, latency = latencyState.data, processes = processState.data;
   const overall = status?.overall ? getOpsStatus(status.overall) : null;
   const refreshing = (!status && !statusState.error) || (!latency && !latencyState.error) || (!processes && !processState.error);

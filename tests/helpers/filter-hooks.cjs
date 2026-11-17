@@ -6,7 +6,9 @@ const React = require('react');
 // Usa el hook real con el mismo estado del componente en las pruebas sin DOM.
 exports.filterDependency = (name, react = React) => {
   const file = name === '../../hooks/useAutoFilters' ? 'src/hooks/useAutoFilters.ts'
-    : name === '../../lib/filterValidation' ? 'src/lib/filterValidation.ts' : null;
+    : name === '../../lib/filterValidation' ? 'src/lib/filterValidation.ts'
+    : name === '../../hooks/useAnalyticsRemote' ? 'src/hooks/useAnalyticsRemote.ts'
+    : name === '../lib/analyticsRefresh' ? 'src/lib/analyticsRefresh.ts' : null;
   if (!file) return undefined;
   const hooks = { ...react, useCallback(fn, dependencies) {
     const [memo] = react.useState(() => ({ fn, dependencies }));
@@ -15,7 +17,8 @@ exports.filterDependency = (name, react = React) => {
   }, useRef(initial) {
     const [ref] = react.useState(() => ({ current: initial })); return ref;
   } };
-  const context = { exports: {}, setTimeout, clearTimeout, require: key => key === 'react' ? hooks : require(key) };
+  const context = { exports: {}, Error, AbortController, setTimeout, clearTimeout,
+    require: key => key === 'react' ? hooks : exports.filterDependency(key, react) ?? require(key) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText, context);

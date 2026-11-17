@@ -43,9 +43,9 @@ export function ContentTable({ items, selectedId, onSelect }: ContentTableProps)
             >
               <td className="tw:min-w-60 tw:max-w-sm tw:font-semibold tw:break-words">{item.title}</td>
               <td>{CONTENT_TYPES[item.type] ?? item.type}</td>
-              <td><span className={`chip ${status.className} tw:px-3 tw:py-1.5 tw:text-sm`}>{status.label}</span></td>
+              <td><span className={`chip ${status.className} tw:px-3 tw:py-1.5 tw:text-sm`}>{item.status === 'published' && !item.audio_available ? 'Publicado sin audio' : status.label}</span></td>
               <td>{item.audio_available ? 'Disponible' : item.audio_status === 'ready' ? 'Audio no disponible' : AUDIO_STATES[item.audio_status] || 'Pendiente'}{item.approved_version !== item.text_version && <p className="tw:mt-2 tw:text-muted">Texto por aprobar</p>}</td>
-              <td>{item.publish_at && <p className="tw:mb-2">Programado: {ticketDate(item.publish_at)}</p>}Actualizado: {ticketDate(item.updated_at)}</td>
+              <td>{item.publish_at && <p className="tw:mb-2">Programado: {ticketDate(item.publish_at)}{item.scheduled_without_audio && <span className="tw:block tw:text-muted">Se publicará con o sin audio</span>}</p>}Actualizado: {ticketDate(item.updated_at)}</td>
               <td>
                 <button
                   className={ui.button}

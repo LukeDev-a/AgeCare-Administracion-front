@@ -1,5 +1,7 @@
 import { useAutoFilters } from '../../hooks/useAutoFilters';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useAnalyticsRemote as useRemote } from '../../hooks/useAnalyticsRemote';
+import type { ActivityRequestInit } from '../../lib/requestActivity';
 import { fetchFeatureAdoption, fetchFeatureAlerts, fetchTopFeatures } from '../../api/features';
 import { FEATURE_ROLE_COLORS, featureRoleName } from '../../lib/featureRoleMeta';
 import { percent } from '../../lib/format';
@@ -10,17 +12,6 @@ import { HeatmapTable } from './HeatmapTable';
 import { FeatureAlertList } from './FeatureAlertList';
 
 const PERIODS = [{ key: 7, label: 'Últimos 7 días' }, { key: 30, label: 'Últimos 30 días' }, { key: 90, label: 'Últimos 90 días' }] as const;
-function useRemote<T>(key: string, load: () => Promise<T>) {
-  const [state, setState] = useState<{ key: string; data: T | null; error: string }>({ key: '', data: null, error: '' });
-  useEffect(() => {
-    let cancelled = false;
-    load().then(data => { if (!cancelled) setState({ key, data, error: '' }); })
-      .catch((error: unknown) => { if (!cancelled) setState({ key, data: null,
-        error: error instanceof Error ? error.message : 'No fue posible consultar los datos.' }); });
-    return () => { cancelled = true; };
-  }, [key, load]);
-  return state.key === key ? state : { key, data: null, error: '' };
-}
 export function FuncionalPage() {
   const [section, setSection] = useState('comparison');
   const [days, setDays] = useState<number>(30);
@@ -28,9 +19,9 @@ export function FuncionalPage() {
   const thresholdFilter = useAutoFilters({ value: '15' }, { delayedKeys: ['value'], validate: row => row.value.trim() && Number.isFinite(Number(row.value)) && Number(row.value) >= 1 && Number(row.value) <= 50 ? '' : 'Introduce un porcentaje entre 1 y 50.' });
   const threshold = Number(thresholdFilter.filters.value) / 100;
   const [reload, setReload] = useState(0);
-  const adoptionLoad = useCallback(() => fetchFeatureAdoption(days), [days]);
-  const topLoad = useCallback(() => fetchTopFeatures(days, limit), [days, limit]);
-  const alertsLoad = useCallback(() => fetchFeatureAlerts(days, threshold), [days, threshold]);
+  const adoptionLoad = useCallback((options?: ActivityRequestInit) => fetchFeatureAdoption(days, options), [days]);
+  const topLoad = useCallback((options?: ActivityRequestInit) => fetchTopFeatures(days, limit, options), [days, limit]);
+  const alertsLoad = useCallback((options?: ActivityRequestInit) => fetchFeatureAlerts(days, threshold, options), [days, threshold]);
   const adoptionState = useRemote(`adoption:${days}:${reload}`, adoptionLoad);
   const topState = useRemote(`top:${days}:${limit}:${reload}`, topLoad);
   const alertsState = useRemote(`alerts:${days}:${threshold}:${reload}`, alertsLoad);

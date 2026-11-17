@@ -1,6 +1,8 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { canAccessRoute } from '../routes/permissions';
+import { MfaRecoveryBadge } from '../components/MfaRecoveryBadge';
+import { STAFF_ROLES } from '../lib/staffMeta';
 
 interface NavItem {
   to: string;
@@ -23,12 +25,13 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: 'Operación',
     items: [
-      { to: '/usuarios-app', icon: '👤', label: 'Usuarios y pacientes', adminOnly: true },
+      { to: '/usuarios-app', icon: '👤', label: 'Cuentas y adultos mayores', adminOnly: true },
       { to: '/tickets', icon: '🎫', label: 'Tickets de soporte'},
       { to: '/contenido', icon: '📰', label: 'Curación de contenido'},
       { to: '/catalogos', icon: '🛍️', label: 'Catálogos marketplace'},
       { to: '/moderacion', icon: '🛡️', label: 'Moderación'},
       { to: '/juegos', icon: '🎮', label: 'Administración de juegos' },
+      { to: '/pagos', icon: '💳', label: 'Pagos y suscripciones', adminOnly: true },
     ],
   },
   {
@@ -69,6 +72,7 @@ export function Sidebar() {
               >
                 <span className="ico">{item.icon}</span>
                 {item.label}
+                {item.to === '/cuentas' && <MfaRecoveryBadge />}
                 {item.soon && <span className="soon">v1</span>}
               </NavLink>
             ))}
@@ -81,7 +85,7 @@ export function Sidebar() {
           <div className="sf-avatar">{user?.full_name.slice(0, 2).toUpperCase() || 'AD'}</div>
           <div>
             <div className="sf-name">{user?.full_name || 'Administrador'}</div>
-            <div className="sf-role">{user?.role || 'Staff'} · Wellq Co</div>
+            <div className="sf-role">{user?.role ? STAFF_ROLES[user.role as keyof typeof STAFF_ROLES] ?? user.role : 'Personal'}</div>
           </div>
         </div>
         <nav className="account-links" aria-label="Mi cuenta">

@@ -10,6 +10,7 @@ import { cancelInvitation, resendInvitation } from '../../api/accountAccess';
 import { MfaRecoveryPanel } from './MfaRecoveryPanel';
 import { StaffInvitationDialog } from './StaffInvitationDialog';
 import { staffStyles as s } from './staffStyles';
+import { MfaRecoveryBadge } from '../../components/MfaRecoveryBadge';
 
 const EMPTY: StaffFilters = { q: '', role: '', is_active: '', account_status: '' };
 export function StaffPage() {
@@ -66,7 +67,7 @@ export function StaffPage() {
   }
   return <section aria-label="Cuentas de la consola" className="tw:mx-auto tw:max-w-[1500px] tw:space-y-6">
     <header className={s.panel}><div className="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-4"><div className="tw:space-y-2"><p className="tw:text-xs tw:font-bold tw:uppercase tw:tracking-wider tw:text-brand-ink">Accesos del equipo</p><h2 className="tw:text-3xl tw:font-bold tw:tracking-tight">Cuentas de la consola</h2><p className={s.muted}>Gestiona al personal que accede a la consola y su verificación en dos pasos.</p></div>{section === 'accounts' && <button className={`${s.button} ${s.primary}`} type="button" onClick={() => { setNotice(''); setForm({ account: null }); }}>Crear cuenta</button>}</div>
-      <nav aria-label="Secciones de cuentas" className={`${s.actions} tw:rounded-xl tw:bg-canvas tw:p-2`}><button type="button" className={`${s.button} ${section === 'accounts' ? s.primary : ''}`} aria-pressed={section === 'accounts'} aria-controls="staff-accounts" onClick={() => setSection('accounts')}>Gestionar cuentas</button><button type="button" className={`${s.button} ${section === 'recovery' ? s.primary : ''}`} aria-pressed={section === 'recovery'} aria-controls="staff-recovery" onClick={() => setSection('recovery')}>Recuperación de MFA</button></nav>
+      <nav aria-label="Secciones de cuentas" className={`${s.actions} tw:rounded-xl tw:bg-canvas tw:p-2`}><button type="button" className={`${s.button} ${section === 'accounts' ? s.primary : ''}`} aria-pressed={section === 'accounts'} aria-controls="staff-accounts" onClick={() => setSection('accounts')}>Gestionar cuentas</button><button type="button" className={`${s.button} ${section === 'recovery' ? s.primary : ''}`} aria-pressed={section === 'recovery'} aria-controls="staff-recovery" onClick={() => setSection('recovery')}>Recuperación de MFA <MfaRecoveryBadge /></button></nav>
     </header>
     <div id="staff-accounts" hidden={section !== 'accounts'} className="tw:space-y-6">
       {notice && <p role="status" className={`${s.notice} tw:text-positive`}>{notice}</p>}
@@ -83,7 +84,7 @@ export function StaffPage() {
           {!loading && <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3"><p className={s.muted}>Página {page} de {pages} · {total} cuentas</p><div className={s.actions}><button type="button" className={s.button} disabled={page <= 1} onClick={() => setPage(value => value - 1)}>Anterior</button><button type="button" className={s.button} disabled={page >= pages} onClick={() => setPage(value => value + 1)}>Siguiente</button></div></div>}</>}
       </section>
     </div>
-    <div id="staff-recovery" hidden={section !== 'recovery'}><MfaRecoveryPanel mfaEnabled={!!user?.mfa_enabled} /></div>
+    <div id="staff-recovery" hidden={section !== 'recovery'}><MfaRecoveryPanel mfaEnabled={!!user?.mfa_enabled} active={section === 'recovery'} /></div>
     {form && <StaffForm account={form.account} currentId={user?.id} onSave={save} onClose={() => setForm(null)} />}
     {deleting && <StaffDeleteDialog account={deleting} onConfirm={remove} onClose={() => setDeleting(null)} />}
     {invitation && <StaffInvitationDialog account={invitation.account} cancel={invitation.cancel} onConfirm={invitationAction} onClose={() => setInvitation(null)} />}

@@ -70,7 +70,7 @@ export function LoginPage() {
           </div>
           <PasswordField className="login-field" label="Contraseña" id="login-password" name="password" autoComplete="current-password" required />
           <div className="login-field">
-            <label htmlFor="login-otp">Código MFA (opcional)</label>
+            <label htmlFor="login-otp">Código MFA</label>
             <input id="login-otp" name="otp_code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" />
           </div>
           <div className="login-error" role="alert" aria-live="polite">{remaining > 0 ? 'Cuenta bloqueada temporalmente por intentos fallidos.' : lock?.email === email.trim().toLowerCase() && lock.until <= now ? 'El tiempo de bloqueo terminó. Puedes volver a intentar iniciar sesión.' : error}</div>

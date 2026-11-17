@@ -3,13 +3,14 @@ import { decideMfaRecovery, fetchMfaRecoveries, type MfaRecoveryRequest } from '
 import { Modal } from '../../components/Modal';
 import { PasswordField } from '../../components/PasswordField';
 import { staffStyles as s, staffStateColor } from './staffStyles';
+import { MFA_RECOVERY_UPDATED, notifyMfaRecoveryChanged } from '../../lib/mfaRecoveryEvents';
 
 const labels: Record<MfaRecoveryRequest['status'], string> = {
   pending: 'Pendiente de revisión', approved: 'Aprobada', rejected: 'Rechazada', expired: 'Vencida o invalidada', cancelled: 'Cancelada',
 };
 const date = (value: string) => new Date(value).toLocaleString('es-CL', { timeZone: 'America/Santiago' });
 
-export function MfaRecoveryPanel({ mfaEnabled }: { mfaEnabled: boolean }) {
+export function MfaRecoveryPanel({ mfaEnabled, active = true }: { mfaEnabled: boolean; active?: boolean }) {
   const [page, setPage] = useState(1);
   const [revision, setRevision] = useState(0);
   const [data, setData] = useState<{ total: number; items: MfaRecoveryRequest[] } | null>(null);
@@ -24,6 +25,7 @@ export function MfaRecoveryPanel({ mfaEnabled }: { mfaEnabled: boolean }) {
   const [notice, setNotice] = useState('');
   const submitting = useRef(false);
   useEffect(() => {
+    if (!active) return;
     const controller = new AbortController();
     fetchMfaRecoveries(page, controller.signal).then(result => {
       if (!controller.signal.aborted) { setData(result); setLoading(false); }
@@ -31,7 +33,13 @@ export function MfaRecoveryPanel({ mfaEnabled }: { mfaEnabled: boolean }) {
       if (!controller.signal.aborted) { setError(exception.message); setLoading(false); }
     });
     return () => controller.abort();
-  }, [page, revision]);
+  }, [page, revision, active]);
+  useEffect(() => {
+    if (!active || selected) return;
+    const refresh = () => { setLoading(true); setError(''); setRevision(value => value + 1); };
+    window.addEventListener(MFA_RECOVERY_UPDATED, refresh);
+    return () => window.removeEventListener(MFA_RECOVERY_UPDATED, refresh);
+  }, [active, selected]);
   function reload(nextPage = page) { setLoading(true); setError(''); setPage(nextPage); setRevision(value => value + 1); }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,13 +51,13 @@ export function MfaRecoveryPanel({ mfaEnabled }: { mfaEnabled: boolean }) {
       await decideMfaRecovery(selected.id, { decision, identity_verified: verified, note: note.trim(),
         password: String(fields.get('password') ?? ''), otp_code: String(fields.get('otp') ?? '') || undefined });
       form.reset(); setSelected(null); setNotice(decision === 'approve' ? 'Solicitud aprobada. Se cerraron las sesiones y se exigirá configurar un nuevo MFA.' : 'Solicitud rechazada. El MFA actual se conserva.');
-      reload();
+      reload(); notifyMfaRecoveryChanged();
     } catch (exception) { setModalError(exception instanceof Error ? exception.message : 'No se pudo guardar la decisión.'); }
     finally { submitting.current = false; setBusy(false); }
   }
   return <section className={s.panel} aria-label="Solicitudes de recuperación MFA">
     <div className="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-4"><div className="tw:space-y-2"><h2 className={s.heading}>Recuperación de acceso con MFA</h2><p className={s.muted}>Revisa las solicitudes de personas que perdieron su autenticador y sus códigos de recuperación.</p></div>
-      <button className={s.button} disabled={loading || busy} onClick={() => reload()}>Actualizar solicitudes</button></div>
+      <button className={s.button} disabled={loading || busy} onClick={() => { reload(); notifyMfaRecoveryChanged(); }}>Actualizar solicitudes</button></div>
     <p className={s.notice}>Aquí aparecen las solicitudes confirmadas por correo. Otro administrador debe verificar la identidad y decidir; el correo por sí solo no autoriza el restablecimiento.</p>
     {error && <p role="alert" className={s.error}>{error}</p>}
     {notice && <p role="status" className={`${s.notice} tw:text-positive`}>{notice}</p>}

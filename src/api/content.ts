@@ -13,6 +13,8 @@ export interface ContentItem {
   tags: string[];
   body: string;
   publish_at: string | null;
+  scheduled_without_audio?: boolean;
+  scheduled_audio_exception_reason?: string | null;
   published_at: string | null;
   audio_status: string;
   audio_error: string | null;
@@ -68,6 +70,22 @@ export async function updateContent(contentId: string, payload: { title?: string
 export async function changeContentPublication(contentId: string, unpublish: boolean): Promise<void> {
   const response = await apiFetch(`/content/items/${contentId}/${unpublish ? 'unpublish' : 'publish'}`, { method: 'POST' });
   if (!response.ok) throw new Error(await parseErrorMessage(response, 'No fue posible cambiar el estado.'));
+}
+
+export async function publishContentWithoutAudio(contentId: string, version: number, reason: string, reviewConfirmed: boolean): Promise<ContentItem> {
+  const response = await apiFetch(`/content/items/${contentId}/publish-without-audio`, {
+    method: 'POST', body: JSON.stringify({ version, reason, review_confirmed: reviewConfirmed }),
+  });
+  if (!response.ok) throw new Error(await parseErrorMessage(response, 'No fue posible publicar sin audio.'));
+  return response.json();
+}
+
+export async function scheduleContentWithoutAudio(contentId: string, version: number, reason: string, reviewConfirmed: boolean, publishAt: string): Promise<ContentItem> {
+  const response = await apiFetch(`/content/items/${contentId}/schedule-without-audio`, {
+    method: 'POST', body: JSON.stringify({ version, reason, review_confirmed: reviewConfirmed, publish_at: publishAt }),
+  });
+  if (!response.ok) throw new Error(await parseErrorMessage(response, 'No fue posible programar sin audio.'));
+  return response.json();
 }
 
 export async function deleteContent(contentId: string): Promise<void> {

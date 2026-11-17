@@ -8,7 +8,7 @@ const MODULE_NAMES: Record<string, string> = {
   ops: 'Monitoreo operativo', support: 'Soporte y tickets', content: 'Curación de contenido',
   marketplace: 'Catálogos marketplace', moderation: 'Moderación', settings: 'Configuración',
   legal: 'Legales y privacidad', staff: 'Cuentas de la consola', audit: 'Auditoría',
-  end_users: 'Usuarios y pacientes',
+  end_users: 'Cuentas y adultos mayores',
 };
 
 function loginDate(value: string | null): string {

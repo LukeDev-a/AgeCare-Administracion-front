@@ -9,7 +9,8 @@ let user, pathname;
 let isAuthenticated = true;
 let logout = () => {};
 function load(path, dependencies = {}) {
-  const context = { exports: {}, require: name => dependencies[name] ?? require(name) };
+  const context = { exports: {}, require: name => dependencies[name]
+    ?? (name === '../components/MfaRecoveryBadge' ? { MfaRecoveryBadge: () => null } : require(name)) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, context);
@@ -17,6 +18,7 @@ function load(path, dependencies = {}) {
 }
 const permissions = load('src/routes/permissions.ts');
 const dependencies = {
+  '../lib/staffMeta': load('src/lib/staffMeta.ts'),
   '../auth/AuthContext': { useAuth: () => ({ user, isAuthenticated, isRestoring: false, logout }) },
   '../routes/permissions': permissions,
   'react-router-dom': {
@@ -77,6 +79,8 @@ test('el menú renderizado y el acceso directo a rutas respetan los cinco perfil
   for (const [role, modules] of Object.entries(roles)) {
     user = { role, full_name: 'Cuenta de prueba', permissions: modules };
     const menu = renderToStaticMarkup(React.createElement(Sidebar));
+    assert.ok(menu.includes(`class="sf-role">${dependencies['../lib/staffMeta'].STAFF_ROLES[role]}</div>`));
+    assert.ok(!menu.includes('Wellq Co'));
     assert.equal(menu.includes('>Sistema</div>'), role === 'admin', `${role}: grupo Sistema`);
     assert.ok(menu.includes('aria-label="Mi cuenta"'), `${role}: navegación personal`);
     assert.ok(menu.indexOf('href="/perfil"') > menu.indexOf('class="sidebar-foot"'));

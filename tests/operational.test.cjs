@@ -89,7 +89,7 @@ test('cambiar ventana consulta nuevos datos, ignora respuesta antigua y aísla f
     './IncidentsPanel': { IncidentsPanel: () => React.createElement('p', { role: 'alert' }, 'Incidentes no disponibles') },
   });
   function render() { cursor = 0; effects = []; return OperativoPage(); }
-  function start() { cancel.forEach(cleanup => cleanup()); cancel = effects.map(effect => effect()); }
+  function start() { cancel.forEach(cleanup => cleanup?.()); cancel = effects.map(effect => effect()); }
   let tree = render(); start();
   assert.match(renderToStaticMarkup(tree), /Consultando el estado de los servicios/);
   assert.equal(find(tree, node => node.type === 'section' && node.props?.['aria-label'] === 'Resumen operativo').props['aria-busy'], true);
