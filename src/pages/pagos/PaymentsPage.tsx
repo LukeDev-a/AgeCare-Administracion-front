@@ -88,7 +88,7 @@ export function PaymentsWorkspace({ initialData }: { initialData: PaymentData })
     </div>
     {notice && <p className={s.notice} role="status">{notice}</p>}
     <div className={s.actions} role="group" aria-label="Tipo de registro">
-      {(['subscriptions', 'charges'] as const).map(kind => <button key={kind} type="button" className={`${s.button} ${tab === kind ? 'tw:border-brand tw:bg-brand-soft tw:text-brand-ink' : ''}`} aria-pressed={tab === kind}
+      {(['subscriptions', 'charges'] as const).map(kind => <button key={kind} type="button" className={`${s.tab} ${tab === kind ? s.tabSelected : s.tabIdle}`} aria-pressed={tab === kind}
         onClick={() => { setTab(kind); reset(); setNotice(''); }}>{kind === 'subscriptions' ? 'Suscripciones' : 'Cobros'}</button>)}
     </div>
     <div className={`${s.panel} tw:space-y-5`}>

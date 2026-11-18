@@ -1,13 +1,15 @@
 export const OPS_COMPONENTS = [
-  ['api_core', 'API central'], ['database', 'Base de datos'], ['auth', 'Autenticación'],
+  ['api_core', 'API administrativa'], ['database', 'Base de datos'], ['auth', 'Autenticación de la consola'],
   ['push', 'Notificaciones push'], ['alert_engine', 'Motor de alertas'],
   ['wearable_ingest', 'Ingesta de wearables'], ['ai_assistant', 'Asistente de IA'],
   ['storage', 'Almacenamiento'], ['music_sync', 'Sincronización musical'],
 ] as const;
 export const opsDate = (value: string | null | undefined) => value
   ? new Date(value).toLocaleString('es-CL', { timeZone: 'America/Santiago', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : 'Sin datos';
-export const opsOrigin = (value: string) => ({ demo: 'Datos de demostración', real: 'Mediciones reales' }[value] ?? 'Origen sin verificar');
+export const opsOrigin = (value: string) => ({ demo: 'Datos de demostración', real: 'Mediciones reales', unavailable: 'Sin mediciones conectadas' }[value] ?? 'Origen sin verificar');
 export const opsMeasurement = (value: string) => ({ delivery: 'Entrega de notificaciones de extremo a extremo',
-  generation: 'Generación de respuestas de IA', service: 'Tiempo de respuesta del servicio' }[value] ?? 'Tipo de medición sin verificar');
+  generation: 'Generación de respuestas de IA', service: 'Tiempo de respuesta del servicio',
+  http_requests: 'Tiempo de las solicitudes HTTP atendidas por la API',
+  database_probe: 'Tiempo de una consulta de comprobación a la base de datos' }[value] ?? 'Tipo de medición sin verificar');
 export const opsExecution = (value: string) => ({ synthetic: 'Comprobación sintética: ejecución de prueba',
   real: 'Ejecuciones reales', demo: 'Ejemplo de demostración' }[value] ?? 'Tipo de ejecución sin verificar');

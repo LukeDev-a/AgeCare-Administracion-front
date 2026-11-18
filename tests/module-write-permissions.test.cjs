@@ -38,6 +38,7 @@ function mount(path, exportName, dependencies, props = {}) {
   const states = [], effects = [], lastDeps = [];
   let stateIndex = 0, effectIndex = 0;
   const hooks = { ...React,
+    useRef(initial) { const index = stateIndex++; if (!(index in states)) states[index] = { current: initial }; return states[index]; },
     useState(initial) {
       const index = stateIndex++;
       if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial;

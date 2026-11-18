@@ -46,7 +46,7 @@ export function TicketsTable({ items, selectedId, onSelect }: TicketsTableProps)
               className={`tw:cursor-pointer tw:hover:bg-canvas ${selectedId === ticket.id ? 'tw:bg-brand-soft' : ''}`}
               onClick={() => onSelect(ticket.id)}
             >
-              <td><button type="button" aria-label={`Abrir ticket ${ticket.number}`} aria-expanded={selectedId === ticket.id} className={`${ui.button} ${selectedId === ticket.id ? ui.primary : ''}`} onClick={event => { event.stopPropagation(); onSelect(ticket.id); }}>#{ticket.number}</button><p className="tw:mt-2 tw:text-xs tw:text-muted">{ticketDate(ticket.created_at)}</p></td>
+              <td><button type="button" aria-label={`Abrir ticket ${ticket.number}`} aria-haspopup="dialog" className={`${ui.button} ${selectedId === ticket.id ? ui.primary : ''}`} onClick={event => { event.stopPropagation(); onSelect(ticket.id); }}>#{ticket.number}</button><p className="tw:mt-2 tw:text-xs tw:text-muted">{ticketDate(ticket.created_at)}</p></td>
               <td className="tw:min-w-56 tw:max-w-sm tw:font-semibold tw:break-words">{ticket.subject}</td>
               <td>{ticket.requester.name}<p className="tw:mt-1 tw:break-words tw:text-muted">{ticket.requester.email}</p><p className="tw:mt-2 tw:text-muted">{ticket.requester.role ? roleLabel(ticket.requester.role) : 'Sin perfil vinculado'}</p></td>
               <td>{TICKET_CATEGORY_NAMES[ticket.category] ?? ticket.category}</td>

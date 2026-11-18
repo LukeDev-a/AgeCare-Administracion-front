@@ -1,12 +1,33 @@
-type Entry = { action: string; action_label?: string; module_label?: string; entity_name?: string; entity_id: string | null; before: Record<string, unknown> | null; after: Record<string, unknown> | null };
+type Entry = { action: string; action_label?: string; module_label?: string; entity_name?: string; entity_type?: string | null; entity_id: string | null; before: Record<string, unknown> | null; after: Record<string, unknown> | null };
 export function formatAuditDate(value: string): string {
   return new Date(value.endsWith('Z') || /[+-]\d\d:\d\d$/.test(value) ? value : value + 'Z').toLocaleString('es-CL');
 }
 export function auditAction(entry: Entry): string { return entry.action_label || 'Cambio de datos'; }
 export function auditModule(entry: Entry): string { return entry.module_label || 'Administración'; }
 export function auditRecord(entry: Entry): string {
+  const collections: Record<string, string> = {
+    'end_users.demo_list': 'Listado de cuentas de la aplicación',
+    'patients.demo_list': 'Listado de adultos mayores',
+    'payments.read': 'Suscripciones y cobros',
+    'payments.initialize': 'Conjunto de suscripciones y cobros',
+  };
+  if (collections[entry.action]) return collections[entry.action];
   const values = { ...entry.before, ...entry.after };
-  return entry.entity_name || String(values.title || values.name || values.subject || values.slug || entry.entity_id || 'Sin nombre');
+  const name = entry.entity_name || values.title || values.name || values.full_name || values.subject || values.slug;
+  if (name) return String(name);
+  if (entry.action === 'ticket.conversation_read') return 'Conversación de soporte';
+  const types: Record<string, string> = {
+    admin_user: 'Cuenta de la consola', demo_app_account: 'Cuenta de la aplicación',
+    app_account: 'Cuenta de la aplicación', demo_app_patient: 'Adulto mayor', app_patient: 'Adulto mayor',
+    game_app: 'Juego o aplicación', ticket: 'Ticket de soporte', content_item: 'Contenido editorial',
+    news_candidate: 'Noticia recopilada', content_job: 'Trabajo de contenido',
+    product: 'Producto', caregiver_profile: 'Perfil de cuidadora', moderation_item: 'Elemento de moderación',
+    incident: 'Incidente operativo', system_setting: 'Parámetro de configuración', legal_version: 'Versión de documento legal',
+    payment_dataset: 'Suscripciones y cobros', payment_subscription: 'Suscripción', payment_charge: 'Cobro',
+    payment_subscriptions: 'Suscripción', payment_charges: 'Cobro',
+    mfa_recovery: 'Solicitud de recuperación MFA', admin_mfa_recovery: 'Solicitud de recuperación MFA',
+  };
+  return types[entry.entity_type || ''] || (entry.entity_id ? 'Elemento identificado por su ID' : 'Sin elemento individual asociado');
 }
 export const AUDIT_ACTION_OPTIONS = [["games.create", "Creó un juego o aplicación"], ["games.update", "Modificó un juego o aplicación"], ["games.delete", "Eliminó un juego o aplicación"], ["games.activate", "Activó un juego o aplicación"], ["games.deactivate", "Desactivó un juego o aplicación"], ["games.toggle", "Cambió el estado de un juego o aplicación"], ["ticket.create", "Creó un ticket"], ["ticket.update", "Modificó un ticket"], ["ticket.reply", "Respondió un ticket"], ["content.create", "Creó contenido"], ["content.update", "Modificó contenido"], ["content.publish", "Publicó contenido"], ["content.unpublish", "Retiró contenido"], ["content.delete", "Eliminó contenido"], ["marketplace.product_create", "Creó un producto"], ["marketplace.product_update", "Modificó un producto"], ["marketplace.caregiver_update", "Modificó un perfil de cuidador"], ["moderation.approve", "Aprobó contenido reportado"], ["moderation.reject", "Rechazó contenido reportado"], ["ops.incident_create", "Creó un incidente"], ["ops.incident_update", "Modificó un incidente"], ["settings.update", "Modificó la configuración"], ["legal.version_create", "Creó una versión de documento legal"], ["legal.version_publish", "Publicó un documento legal"], ["staff.create", "Creó una cuenta de administración"], ["staff.update", "Modificó una cuenta de administración"]];
 

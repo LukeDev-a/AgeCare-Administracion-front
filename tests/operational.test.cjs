@@ -17,6 +17,66 @@ const status = load('src/lib/statusMeta.ts');
 const format = load('src/lib/format.ts');
 const loading = load('src/pages/operativo/LoadingIndicator.tsx');
 
+test('un estado desconocido no se presenta como operativo', () => {
+  assert.equal(status.getOpsStatus(null).className, 'neutral');
+  assert.equal(status.getOpsStatus('future_status').className, 'neutral');
+});
+
+test('mediciones reales escasas muestran cobertura pendiente y conservan un cero real', () => {
+  const { OpsComponentCard } = load('src/pages/operativo/OpsComponentCard.tsx', {
+    '../../lib/format': format, '../../lib/statusMeta': status, '../../lib/operationalMeta': meta,
+  });
+  const component = { key: 'auth', name: 'Autenticación de la consola', status: null, uptime_30d: null,
+    latency_p50_ms: null, latency_p95_ms: null, checked_at: null, data_origin: 'real',
+    measurement_kind: 'service', measurement_source: 'http_requests', freshness: 'no_data',
+    sample_count: 0, observed_success_rate: null, minimum_samples: 20 };
+  const pending = renderToStaticMarkup(React.createElement(OpsComponentCard, { component }));
+  assert.match(pending, /Esperando mediciones/);
+  assert.match(pending, /Sin muestras suficientes/);
+  assert.match(pending, /sin historial o cobertura suficientes/);
+  assert.match(pending, /no se consideran una caída/);
+  assert.doesNotMatch(pending, /100,00%|✔ Operativo/);
+  const zero = renderToStaticMarkup(React.createElement(OpsComponentCard, { component: {
+    ...component, freshness: 'fresh', status: 'outage', sample_count: 20,
+    observed_success_rate: 0, latency_p50_ms: 0, latency_p95_ms: 0,
+  } }));
+  assert.match(zero, />0%/);
+  assert.match(zero, />0 ms/);
+  assert.match(zero, /✖ Caído/);
+});
+
+test('servicios no integrados y muestras antiguas no aparecen verdes ni simulan disponibilidad', () => {
+  const { OpsComponentCard } = load('src/pages/operativo/OpsComponentCard.tsx', {
+    '../../lib/format': format, '../../lib/statusMeta': status, '../../lib/operationalMeta': meta,
+  });
+  const component = { key: 'push', name: 'Notificaciones push', status: 'operational', uptime_30d: null,
+    latency_p50_ms: null, latency_p95_ms: null, checked_at: null, data_origin: 'unavailable',
+    measurement_kind: 'delivery', freshness: 'not_integrated' };
+  const absent = renderToStaticMarkup(React.createElement(OpsComponentCard, { component }));
+  assert.match(absent, /Sin mediciones conectadas/);
+  assert.doesNotMatch(absent, /chip ok|Disponible en los últimos 30 días/);
+  const stale = renderToStaticMarkup(React.createElement(OpsComponentCard, { component: {
+    ...component, freshness: 'stale', data_origin: 'real', measurement_source: 'http_requests',
+  } }));
+  assert.match(stale, /Sin datos recientes/);
+  assert.doesNotMatch(stale, /chip ok/);
+});
+
+test('el gráfico de latencias excluye percentiles ausentes pero conserva el cero medido', () => {
+  let rows;
+  const chart = props => { rows = props.data; return React.createElement('div', null, props.children); };
+  const blank = () => null;
+  const { LatencyChart } = load('src/pages/operativo/LatencyChart.tsx', { recharts: {
+    BarChart: chart, ResponsiveContainer: props => props.children,
+    Bar: blank, Tooltip: blank, XAxis: blank, YAxis: blank,
+  } });
+  const pending = renderToStaticMarkup(React.createElement(LatencyChart, { components: [{ name: 'API', p95_ms: null }] }));
+  assert.match(pending, /Reuniendo mediciones/);
+  renderToStaticMarkup(React.createElement(LatencyChart, { components: [{ name: 'API', p95_ms: null }, { name: 'DB', p95_ms: 0 }] }));
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].p95, 0);
+});
+
 test('consulta ventanas y varios componentes con cliente protegido y conserva error de API', async () => {
   const calls = [];
   const api = load('src/api/operational.ts', { './client': { apiFetch: async path => {

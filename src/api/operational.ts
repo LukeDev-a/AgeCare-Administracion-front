@@ -4,32 +4,48 @@ import type { ActivityRequestInit } from '../lib/requestActivity';
 export type OpsStatusKey = 'operational' | 'degraded' | 'outage';
 export type OpsWindow = '1h' | '24h' | '7d';
 
-export interface OpsComponent {
+export interface OpsObservations {
+  sample_count?: number;
+  successful_sample_count?: number;
+  first_observed_at?: string | null;
+  last_observed_at?: string | null;
+  observed_success_rate?: number | null;
+  coverage_seconds?: number | null;
+  coverage_ratio?: number | null;
+  sample_window?: OpsWindow;
+  freshness?: 'no_data' | 'fresh' | 'stale' | 'not_integrated' | 'stored';
+  measurement_source?: 'http_requests' | 'database_probe' | null;
+  minimum_samples?: number;
+}
+
+export interface OpsComponent extends OpsObservations {
   key: string;
   name: string;
-  status: OpsStatusKey;
-  uptime_30d: number;
+  status: OpsStatusKey | null;
+  uptime_30d: number | null;
   latency_p50_ms: number | null;
   latency_p95_ms: number | null;
   note?: string | null;
-  checked_at: string;
+  checked_at: string | null;
   data_origin: string;
   measurement_kind: string;
 }
 
 export interface OpsStatus {
+  monitoring_enabled?: boolean;
+  sample_window?: OpsWindow;
   overall: OpsStatusKey | null;
   checked_at: string | null;
   components: OpsComponent[];
 }
 
-export interface LatencyComponent {
+export interface LatencyComponent extends OpsObservations {
   key: string;
   name: string;
-  p50_ms: number;
-  p95_ms: number;
+  p50_ms: number | null;
+  p95_ms: number | null;
   sample_count: number;
-  computed_at: string;
+  computed_at: string | null;
   data_origin: string;
   measurement_kind: string;
 }

@@ -30,6 +30,7 @@ function mount(path, name, dependencies, props = {}) {
   const states = [], effects = [], previous = [], cleanups = [];
   let si = 0, ei = 0;
   const hooks = { ...React,
+    useRef(initial) { const i = si++; if (!(i in states)) states[i] = { current: initial }; return states[i]; },
     useState(initial) { const i = si++; if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
       return [states[i], value => { states[i] = typeof value === 'function' ? value(states[i]) : value; }]; },
     useEffect(fn, values) { const i = ei++; if (!previous[i] || values.some((value, j) => value !== previous[i][j])) {
@@ -96,6 +97,31 @@ const ticket = { id: 'uuid', number: 100, subject: 'Prueba', description: 'Descr
   created_at: '2026-10-27', updated_at: '2026-10-27', first_response_at: null, replies_count: 26,
   requester_context: { dispositivo: 'Teléfono' }, csat: { score: 4, comment: 'Gracias' } };
 
+test('modal protege cambios y mensajes pendientes y bloquea el cierre mientras guarda', async () => {
+  let finish;
+  const onClose = () => {};
+  const detail = mount('src/pages/tickets/TicketDetail.tsx', 'TicketDetail', { '../../api/tickets': {
+    fetchTicketDetail: async () => ticket, fetchAgents: async () => [],
+    fetchTicketReplies: async () => ({ items: [], page: 1, page_size: 25, total: 0 }),
+    updateTicket: () => new Promise(resolve => { finish = resolve; }),
+  } }, { ticketId: 'uuid', onTicketUpdated() {}, onClose });
+  await detail.settle();
+  assert.equal(detail.tree().props.onClose, onClose);
+  assert.equal(detail.tree().props.dirty, false);
+  detail.find(node => node.type === 'textarea').props.onChange({ target: { value: 'Mensaje pendiente' } });
+  assert.equal(detail.tree().props.dirty, true);
+  detail.find(node => node.type === 'textarea').props.onChange({ target: { value: '' } });
+  assert.equal(detail.tree().props.dirty, false);
+  detail.find(node => node.type === 'select' && node.props.value === 'medium').props.onChange({ target: { value: 'high' } });
+  assert.equal(detail.tree().props.dirty, true);
+  const saving = detail.find(node => node.type === 'button' && node.props.children === 'Guardar cambios').props.onClick();
+  assert.equal(detail.tree().props.busy, true);
+  finish();
+  await saving;
+  await detail.settle();
+  assert.equal(detail.tree().props.busy, false);
+});
+
 test('detalle pagina conversación, muestra contexto sin encuestas y manda solo campos modificados', async () => {
   const pages = [], patches = [];
   const detail = mount('src/pages/tickets/TicketDetail.tsx', 'TicketDetail', { '../../api/tickets': {
@@ -138,6 +164,27 @@ test('un fallo al guardar se muestra en pantalla y conserva cambios y respuesta 
   await new Promise(setImmediate);
   assert.match(detail.html(), /No se pudo guardar el mensaje/);
   assert.equal(detail.find(node => node.type === 'textarea').props.value, 'Respuesta que debe conservarse');
+});
+
+test('cambiar apartados y guardar una nota conserva la gestión pendiente', async () => {
+  const messages = [];
+  const detail = mount('src/pages/tickets/TicketDetail.tsx', 'TicketDetail', { '../../api/tickets': {
+    fetchTicketDetail: async () => ticket, fetchAgents: async () => [],
+    fetchTicketReplies: async () => ({ items: [], page: 1, page_size: 25, total: 0 }),
+    createReply: async (_id, body, internal) => messages.push({ body, internal }),
+  } }, { ticketId: 'uuid', onTicketUpdated() {} });
+  await detail.settle();
+  detail.find(node => node.type === 'select' && node.props.value === 'medium').props.onChange({ target: { value: 'high' } });
+  detail.find(node => node.type === 'button' && String(node.props.children).startsWith('Conversación')).props.onClick();
+  detail.find(node => node.type === 'textarea').props.onChange({ target: { value: 'Comprobación realizada' } });
+  detail.find(node => node.type === 'button' && node.props.children?.[0]?.props?.children === 'Nota interna').props.onClick();
+  await detail.find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  await detail.settle();
+  assert.equal(messages[0].internal, true);
+  assert.equal(messages[0].body, 'Comprobación realizada');
+  assert.equal(detail.find(node => node.type === 'textarea').props.value, '');
+  assert.equal(detail.find(node => node.type === 'select' && node.props.value === 'high').props.value, 'high');
+  assert.match(detail.html(), /Nota interna guardada/);
 });
 
 test('ticket cerrado conserva lectura y oculta el formulario de mensajes', async () => {

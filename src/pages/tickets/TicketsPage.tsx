@@ -138,7 +138,7 @@ export function TicketsPage() {
       <section className={ui.panel} aria-label="Listado de tickets" aria-busy={loading}>
         <div className="tw:mb-5 tw:flex tw:flex-wrap tw:items-baseline tw:justify-between tw:gap-3"><h2 className={ui.heading}>Solicitudes de soporte</h2>
           {data && <p className="tw:text-sm tw:text-muted">{fmt(data.total)} tickets · página {data.page}</p>}</div>
-        <p className={ui.description}>Selecciona el número de un ticket para abrir su detalle debajo de la lista.</p>
+        <p className={ui.description}>Selecciona el número de un ticket para consultar y gestionar su detalle en una ventana.</p>
 
         <div className="tw:overflow-x-auto tw:rounded-xl tw:border tw:border-solid tw:border-stroke">
           {error && <p role="alert" className={ui.error}>{error}</p>}
@@ -159,13 +159,8 @@ export function TicketsPage() {
         </div>
       </section>
 
-      {selectedId ? (
-        <TicketDetail key={selectedId} ticketId={selectedId} onTicketUpdated={refresh} />
-      ) : (
-        <div className={ui.panel}>
-          <p className="tw:py-5 tw:text-center tw:text-muted">Selecciona un ticket para ver su detalle.</p>
-        </div>
-      )}
+      {selectedId && <TicketDetail key={selectedId} ticketId={selectedId} onTicketUpdated={refresh}
+        onClose={() => setSelectedId(null)} />}
     </div>
   );
 }

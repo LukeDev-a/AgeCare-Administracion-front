@@ -20,6 +20,7 @@ export function OperativoPage() {
   const latencyState = useRemote(`${window}:${selected.join(',')}:${reload}`, latencyLoad, section !== 'incidents');
   const processState = useRemote(`processes:${reload}`, fetchCriticalProcesses, section !== 'incidents');
   const status = statusState.data, latency = latencyState.data, processes = processState.data;
+  const measured = status?.components.filter(component => !status.monitoring_enabled || component.freshness !== 'stored') ?? [];
   const overall = status?.overall ? getOpsStatus(status.overall) : null;
   const refreshing = (!status && !statusState.error) || (!latency && !latencyState.error) || (!processes && !processState.error);
   return <div className="tw:space-y-6 tw:text-sm tw:leading-relaxed tw:text-ink">
@@ -31,7 +32,7 @@ export function OperativoPage() {
         {refreshing ? 'Actualizando…' : 'Actualizar estado'}
       </button>
     </header>
-    <p className="tw:text-muted">La información se consulta al entrar o al actualizar. Cada fecha indica cuándo se recibió la medición, en horario de Santiago.</p>
+    <p className="tw:text-muted">La información se consulta al entrar o al actualizar. Las nuevas mediciones pueden tardar hasta un minuto en aparecer. Cada fecha indica cuándo se recibió la medición, en horario de Santiago.</p>
     <div className="tw:flex tw:flex-wrap tw:gap-2" role="group" aria-label="Secciones del estado operativo">
       {[[ 'summary', 'Resumen' ], ['latency', 'Tiempos de respuesta'], ['processes', 'Procesos críticos'], ['incidents', 'Incidentes']].map(([key, label]) =>
         <button key={key} type="button" aria-pressed={section === key} onClick={() => setSection(key)} className={section === key
@@ -43,17 +44,19 @@ export function OperativoPage() {
     {!status && !statusState.error && <LoadingIndicator label="Consultando el estado de los servicios…" />}
     {status && <>
       <div className="tw:mb-6 tw:space-y-4 tw:rounded-2xl tw:border tw:border-solid tw:border-stroke tw:bg-panel tw:p-6">
-        <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3"><h2 className="tw:text-lg tw:font-bold">Estado general de la plataforma</h2>
+        <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3"><h2 className="tw:text-lg tw:font-bold">{status.monitoring_enabled ? 'Estado de los servicios medidos' : 'Estado general de la plataforma'}</h2>
           <span className={`chip ${overall?.className ?? 'neutral'} tw:px-4 tw:py-2 tw:text-base`}>{overall?.label ?? 'Sin datos de componentes'}</span></div>
-        <p className="tw:text-muted">{status.overall === 'outage' ? 'Hay servicios fuera de servicio. Revisa los componentes afectados.' : status.overall === 'degraded' ? 'Hay servicios con dificultades. Revisa sus observaciones para conocer el detalle.' : status.overall === 'operational' ? 'Todos los componentes informados están operativos.' : 'Aún no hay información suficiente para determinar el estado general.'}</p>
+        <p className="tw:text-muted">{status.overall === 'outage' ? 'Las mediciones recientes registran fallos técnicos. Revisa los componentes afectados.' : status.overall === 'degraded' ? 'Hay servicios con dificultades. Revisa sus observaciones para conocer el detalle.' : status.overall === 'operational' ? 'Los servicios con mediciones recientes responden correctamente.' : 'Aún no hay información suficiente para determinar el estado general.'}</p>
+        {status.monitoring_enabled && <p className="tw:text-muted">Se mide la API administrativa, su base de datos y la autenticación de la consola. Los demás servicios conservan sus valores anteriores y no se incluyen en este resumen. Durante una suspensión del servidor no se registran comprobaciones.</p>}
         <div className="tw:flex tw:flex-wrap tw:gap-3">{[['operational', 'Operativos'], ['degraded', 'Con dificultades'], ['outage', 'Fuera de servicio']].map(([key, label]) =>
-          <span key={key} className="tw:rounded-xl tw:bg-canvas tw:px-4 tw:py-2"><strong>{status.components.filter(component => component.status === key).length}</strong> {label}</span>)}</div>
+          <span key={key} className="tw:rounded-xl tw:bg-canvas tw:px-4 tw:py-2"><strong>{measured.filter(component => component.status === key).length}</strong> {label}</span>)}
+          <span className="tw:rounded-xl tw:bg-canvas tw:px-4 tw:py-2"><strong>{measured.filter(component => component.status == null).length}</strong> Sin medición vigente</span></div>
         <p className="tw:text-muted">Última comprobación recibida {opsDate(status.checked_at)} · Santiago</p>
       </div>
       <h2 className="tw:mb-2 tw:text-xl tw:font-bold">Servicios de la plataforma</h2>
       <p className="tw:mb-5 tw:text-muted">El estado general refleja el servicio más afectado. Abre el detalle de cada tarjeta para consultar sus mediciones.</p>
       <div className="tw:grid tw:gap-4 tw:lg:grid-cols-2 tw:xl:grid-cols-3">
-        {[...status.components].sort((a, b) => ({ outage: 0, degraded: 1, operational: 2 }[a.status] - { outage: 0, degraded: 1, operational: 2 }[b.status])).map(component => <OpsComponentCard key={component.key} component={component} />)}
+        {[...status.components].sort((a, b) => (a.status ? { outage: 0, degraded: 1, operational: 2 }[a.status] : 3) - (b.status ? { outage: 0, degraded: 1, operational: 2 }[b.status] : 3)).map(component => <OpsComponentCard key={component.key} component={component} />)}
       </div>
     </>}
     </section>
@@ -84,8 +87,8 @@ export function OperativoPage() {
           <thead><tr><th>Servicio</th><th>Qué se mide</th><th>Habitual (p50)</th><th>95 % (p95)</th><th>Mediciones</th><th>Actualización</th></tr></thead>
           <tbody>{latency.components.map(row => <tr key={row.key}>
             <td>{row.name}<div className="tw:mt-2 tw:text-sm tw:text-muted">{opsOrigin(row.data_origin)}</div></td>
-            <td>{opsMeasurement(row.measurement_kind)}</td><td>{row.p50_ms.toLocaleString('es-CL')} ms</td><td>{row.p95_ms.toLocaleString('es-CL')} ms</td>
-            <td>{row.sample_count.toLocaleString('es-CL')}</td><td>{opsDate(row.computed_at)}</td>
+            <td>{opsMeasurement(row.measurement_source ?? row.measurement_kind)}{row.p95_ms == null && <p className="tw:mt-2 tw:text-muted">Se requieren al menos {row.minimum_samples ?? 20} mediciones correctas.</p>}</td><td>{row.p50_ms == null ? 'Sin muestras suficientes' : `${row.p50_ms.toLocaleString('es-CL')} ms`}</td><td>{row.p95_ms == null ? 'Sin muestras suficientes' : `${row.p95_ms.toLocaleString('es-CL')} ms`}</td>
+            <td>{row.sample_count.toLocaleString('es-CL')}{row.successful_sample_count != null && <p className="tw:mt-1 tw:text-muted">{row.successful_sample_count.toLocaleString('es-CL')} correctas</p>}</td><td>{opsDate(row.computed_at)}</td>
           </tr>)}</tbody>
         </table></div>
       </>}
@@ -97,7 +100,7 @@ export function OperativoPage() {
       <div className="tw:mb-4 tw:text-muted">Última actualización {opsDate(processes?.computed_at)} · Santiago</div>
       {processState.error && <p role="alert">{processState.error}</p>}
       {!processes && !processState.error && <LoadingIndicator label="Consultando los procesos críticos…" />}
-      {processes && !processes.processes.length && <p>Sin datos de procesos críticos.</p>}
+      {processes && !processes.processes.length && <p>Sin datos de procesos críticos. Estos recorridos todavía no tienen mediciones conectadas. Puedes consultar la API, la base de datos y la autenticación en Resumen.</p>}
       <div className="tw:overflow-x-auto"><table className={tableStyle}>
         <thead><tr><th>Proceso</th><th>Recorrido y tipo de ejecución</th><th>Tiempo p95</th><th>Éxito · 24 h</th><th>Estado</th><th>Actualización</th></tr></thead>
         <tbody>{processes?.processes.map(process => <tr key={process.key}>

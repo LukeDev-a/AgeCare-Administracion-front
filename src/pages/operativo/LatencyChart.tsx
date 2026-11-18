@@ -2,7 +2,9 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 import type { LatencyComponent } from '../../api/operational';
 
 export function LatencyChart({ components }: { components: LatencyComponent[] }) {
-  const data = components.map(component => ({ name: component.name, p95: component.p95_ms }));
+  const data = components.filter(component => component.p95_ms != null).map(component => ({ name: component.name, p95: component.p95_ms }));
+
+  if (!data.length) return <p className="tw:py-5 tw:text-muted">Reuniendo mediciones para calcular los tiempos de respuesta.</p>;
 
   return (
     <ResponsiveContainer width="100%" height={components.length * 40 + 20}>
