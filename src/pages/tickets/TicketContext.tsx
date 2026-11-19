@@ -2,6 +2,8 @@ const LABELS: Record<string, string> = {
   patients: 'Personas a su cuidado', display_name: 'Nombre', devices: 'Dispositivos',
   platform: 'Sistema del dispositivo', app_version: 'Versión de la aplicación',
   plan: 'Plan', os: 'Sistema operativo', device: 'Dispositivo',
+  roles: 'Roles de la cuenta al registrar el ticket', account_state: 'Estado de la cuenta al registrar el ticket',
+  family: 'Familiar', caregiver: 'Cuidador/a', elder: 'Adulto mayor', doctor: 'Médico/a',
 };
 
 export function TicketContext({ value }: { value: unknown }) {

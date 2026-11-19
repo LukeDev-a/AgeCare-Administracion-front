@@ -1,5 +1,45 @@
 # Mapa del frontend principal
 
+## Ayuda de límites operativos actualizada — 19nov2026
+
+Validación final:12 pruebas dirigidas frontend,build/lint correctos;592backend completas. API local confirma límites efectivos sin cambiar los valores actuales. Supera lint en curso abajo; despliegue remoto pendiente.
+
+settingsMeta explica que p95_ms y error_rate evalúan API real en última hora, mínimo20respuestas correctas para p95, fallos técnicos excluyendo4xx, propagaciónmáximo60s y sin cambiar velocidad/timeouts. Backend ya consume esta clave; supera notas históricas donde era solo almacenada.12 pruebas existentes de Configuración/Estado operativo, build correctos; lint dirigido en curso. Sin cambio de permisos ni migración.
+
+## Selección editorial combinada para importación — 19nov2026
+
+Usuario proporcionó JSON del artículo27126: author3 David, category3 Novedades de Cuentamealgobueno y19331 Periodismo Positivo; Redacción122 confirmado en archivo anterior. ImportNewsModal usa author=122,3&categories=3,19331&orderby=date&order=desc&per_page=20&_embed=author,wp:term: autor de ese conjunto Y alguna de esas categorías. Solo cambia enlace/instrucciones, no recopilador, validación ni procedencia. Descarga puede incluir años anteriores; no equivale a autorización. Aún requiere probar respuesta remota en navegador del usuario debido a bloqueo del medio para consultas automáticas. Sustituye filtro por solo Redacción documentado abajo.
+
+## Enlace de importación por Redacción — 19nov2026
+
+ImportNewsModal enlaza posts?per_page=20&author=122&_embed=author y explica que descarga hasta20 noticias de Redacción. ID122 confirmado en _embedded.author del archivo noticias.json aportado por el usuario (Redacción/slug redaccion; Agencias223). Este filtro no verifica derechos ni altera la validación de archivos, las noticias existentes o Recopilar ahora.23 pruebas existentes de contenido y build aprobados. Consulta directa al medio bloqueada por comprobación web, sin validar respuesta actual; debe abrirse en navegador habitual. Manual2.3 actualizar enlace y advertencia de revisión individual.
+
+## Grupos de noticias — 19nov2026
+
+NewsCandidates usa fetchCandidates(page,false) en Por preparar; Con borrador creado se consulta al desplegar con fetchCandidates(draftPage,true). has_draft filtra servidor antes de paginar: páginas/totales independientes, carga/error propios y cancelación de respuestas tardías. Selección conserva snapshot para no desmontar revisión al crear borrador. Abrir borrador usa item_id/onDraft hacia Gestión; revisar procedencia permanece para source_changed o derechos no confirmados. CandidateReview también renombra Ir al borrador a Abrir borrador. No publica ni duplica datos.23 pruebas de contenido,25 API contenido/importación, build/lint correctos. Manual2.3 actualizar grupos. Backend nuevo requiere despliegue junto a frontend.
+
+Selección azul: implementación efectiva vive en tailwind.css @layer components con important, ya que utilidades están importadas important. El primer selector normal en index.css no ganaba la cascada y fue retirado. Usuario confirmó visualmente corrección; build correcto.
+
+## Selección visible de secciones — 19nov2026
+
+Curación (Gestionar contenido/Preparar noticias), Usuarios y soporte (Actividad/Atención) y Uso por funcionalidad (Comparar/Más utilizadas/Uso bajo) comparten section-tabs. aria-pressed=true activa fondo azul sólido #3b6fd4 y texto blanco, conservado en hover y ambos temas. Selector CSS específico evita conflicto de utilidades de botón; sin cambios a navegación, consultas o conservación de filtros.47 pruebas existentes dirigidas correctas, build y lint dirigido aprobados. Sin nueva prueba para cambio puramente visual ni despliegue remoto.
+
+## Perfiles del solicitante en tickets — 19nov2026
+
+Requester admite roles opcional. Tabla/detalle muestra todos los perfiles cuando llegan; conserva role para respuestas/históricos anteriores. Sin roles distingue cuenta vinculada sin membresías de ticket sin cuenta. TicketContext traduce roles y estado capturados al crear. Backend resuelve desde directorio, no desde tickets anteriores; desconocidos requieren confirmación cada vez.19 pruebas dirigidas tickets/directorio, build/lint correctos. No migración ni modificación de tickets anteriores. Manual2.2 actualizar búsqueda de solicitante.
+
+## Roles de cuentas y relaciones — 19nov2026
+
+EndUsersPage muestra roles únicos de la cuenta derivados de membresías (roles opcional para backend anterior). No confundir resumen con rol global: el vínculo conserva el rol individual. DirectoryDetail usa tarjetas con sujeto explícito y nombre del adulto mayor; elder indica cuenta como adulto mayor. No modifica datos ni permisos. API añade roles a lista/detalle sin migración. Ocho pruebas frontend,24 backend, build y lint dirigido correctos. Manual2.1 actualizar listado y tarjetas.
+
+## Incidentes en modal — 19nov2026
+
+Por petición del usuario, Registrar incidente y Ver detalle de Estado operativo abren Modal compartido. Actualizar registro sustituye la ventana de detalle por el formulario modal (sin diálogos anidados); cancelar edición regresa al detalle y guardar muestra el registro confirmado. Formulario avisa al cerrar con modificaciones, bloquea cierre durante envío y mantiene errores/valores para reintento. Detalle conserva aviso por correo/polling y consulta para analyst; escritura solo admin/support. Filtros/listado permanecen detrás, sin cambiar transiciones, resolución, API o correo. Manual1.2 debe indicar ventanas de registro/detalle/edición. Sin backend/migración.
+
+## Corte diario de actividad/adopción — 19nov2026
+
+UsuariosPage y FuncionalPage consumen data_through opcional: muestran hastaqué día completo llega la actividad, separado decomputed_at. Retención preparada compara usuarios activos30danteriores con los que vuelven30drecientes; ventanas7/30/90 usan fuente común. Contratos anteriores siguen funcionando sinmetadata. No cambios aPagos, Uso comercial o directorio, excluidos por usuario. Backendlocal0022/fuente preparada hasta18nov; API activa. Neon sigue0021 y requiere migración/preparación específica antes de despliegue. Build/lint y25pruebasfrontenddirigidas correctos.
+
 ## Claridad del elemento de auditoría — 18nov2026
 
 Por petición del usuario, columna/detalle «Registro» pasa a «Elemento relacionado». auditRecord conserva nombre histórico cuando existe y resuelve listados por acción, conversaciones y tipos de entidad cuando no hay título. UUID abreviado en tabla y completo en detalle; no consulta nombres actuales ni cambia eventos históricos/API/CSV. Añade full_name como fallback. Ausencia de ID se explica como acción sin elemento individual asociado. Prueba de consultas/listados/tipos/ausencias en audit-meta.test.cjs. Manual3.1 debe usar la nueva etiqueta.

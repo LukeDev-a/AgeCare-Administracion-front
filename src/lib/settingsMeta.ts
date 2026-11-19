@@ -39,8 +39,8 @@ export const fieldHelp = (key: string) => ({
   notice_enabled: 'Publicado muestra el aviso a las cuentas autenticadas. Oculto lo retira de la pantalla y conserva el título y el mensaje. Para publicarlo debes completar ambos campos.',
   notice_title: 'Hasta 120 caracteres. Usa un título breve y comprensible.',
   notice_body: 'Hasta 1000 caracteres, en texto plano. No incluyas datos personales, contraseñas ni claves.',
-  p95_ms: 'El 95 % de las respuestas debería completarse dentro de este tiempo. 1000 milisegundos equivalen a 1 segundo.',
-  error_rate: 'Se expresa entre 0 y 1. Por ejemplo, 0,02 equivale al 2 % de las solicitudes.',
+  p95_ms: 'Se compara con el p95 real de la última hora, con al menos 20 respuestas correctas. 1000 ms equivalen a 1 segundo. No modifica la velocidad ni el tiempo de espera de la API.',
+  error_rate: 'Proporción máxima de fallos técnicos en la última hora. 0,02 equivale al 2 %. Los rechazos de negocio (4xx) no cuentan como caída. Los cambios se aplican sin reiniciar, en un máximo de 60 segundos.',
   explicit_cancellation: 'Si seleccionas Sí, las cuentas que cancelan se incluyen en el cálculo de bajas.',
   inactivity_days: 'Cantidad de días sin actividad a partir de la cual se considera una baja en los indicadores.',
 } as Record<string, string>)[key];

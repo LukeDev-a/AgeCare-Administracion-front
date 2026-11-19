@@ -64,9 +64,9 @@ export function ContentPage() {
     <div className="tw:space-y-7 tw:text-base tw:leading-relaxed tw:text-ink">
       <header><p className="tw:mb-2 tw:text-xs tw:font-bold tw:tracking-widest tw:text-brand-ink tw:uppercase">Contenido para la aplicación</p><h1 className="tw:text-2xl tw:font-bold tw:sm:text-3xl">Curación de contenido</h1>
         <p className={ui.description}>Revisa, adapta y publica chistes y noticias para los usuarios de la app móvil.</p></header>
-        <div className="tw:flex tw:flex-wrap tw:gap-2 tw:rounded-2xl tw:bg-canvas tw:p-2" role="group" aria-label="Secciones de curación de contenido">
-          <button type="button" className={`${ui.button} ${section === 'manage' ? ui.primary : ''}`} aria-controls="content-manage" aria-pressed={section === 'manage'} onClick={() => setSection('manage')}>Gestionar contenido</button>
-          <button type="button" className={`${ui.button} ${section === 'prepare' ? ui.primary : ''}`} aria-controls="content-prepare" aria-pressed={section === 'prepare'} onClick={() => setSection('prepare')}>Preparar noticias</button>
+        <div className="section-tabs tw:flex tw:flex-wrap tw:gap-2 tw:rounded-2xl tw:bg-canvas tw:p-2" role="group" aria-label="Secciones de curación de contenido">
+          <button type="button" className={ui.button} aria-controls="content-manage" aria-pressed={section === 'manage'} onClick={() => setSection('manage')}>Gestionar contenido</button>
+          <button type="button" className={ui.button} aria-controls="content-prepare" aria-pressed={section === 'prepare'} onClick={() => setSection('prepare')}>Preparar noticias</button>
         </div>
       <section id="content-manage" hidden={section !== 'manage'} aria-label="Gestionar contenido" className="tw:space-y-7">
       <div className={ui.panel}>

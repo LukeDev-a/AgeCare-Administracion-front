@@ -7,6 +7,7 @@ export interface TicketRequester {
   name: string;
   email: string;
   role: string | null;
+  roles?: string[];
   user_id?: string | null;
 }
 

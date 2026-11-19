@@ -8,6 +8,7 @@ import { OPS_COMPONENTS, opsDate } from '../../lib/operationalMeta';
 import { INCIDENT_STATUSES, incidentMailLabel } from '../../lib/incidentsMeta';
 import { IncidentForm } from './IncidentForm';
 import { LoadingIndicator } from './LoadingIndicator';
+import { Modal } from '../../components/Modal';
 
 const INITIAL = { days: '30', status: '', component: '' };
 export function IncidentsPanel({ refreshKey = 0, active = true }: { refreshKey?: number; active?: boolean }) {
@@ -50,7 +51,7 @@ export function IncidentsPanel({ refreshKey = 0, active = true }: { refreshKey?:
   const componentName = (value: string | null) => OPS_COMPONENTS.find(([key]) => key === value)?.[1] ?? 'Transversal';
   return <section className="tw:space-y-5 tw:rounded-2xl tw:border tw:border-solid tw:border-stroke tw:bg-panel tw:p-5 tw:sm:p-7 tw:[&_button]:min-h-11 tw:[&_button]:text-sm">
     <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-4"><div><h2 className="tw:text-xl tw:font-bold">Incidentes y mantenimientos</h2><p className="tw:mt-2 tw:text-muted">Consulta los problemas registrados y el seguimiento de su resolución.</p></div>
-      {allowed && <button className="action-button" type="button" onClick={() => { setCreating(true); setEditing(false); setSelected(null); setNotice(''); }}>Registrar incidente</button>}</div>
+      {allowed && <button className="action-button" type="button" aria-haspopup="dialog" onClick={() => { setCreating(true); setEditing(false); setSelected(null); setNotice(''); }}>Registrar incidente</button>}</div>
     <fieldset disabled={editing || creating} className="tw:min-w-0 tw:border-0 tw:flex tw:flex-wrap tw:items-end tw:gap-4 tw:rounded-xl tw:bg-canvas tw:p-4 tw:[&_label]:grid tw:[&_label]:gap-2 tw:[&_label]:font-semibold tw:[&_input]:min-h-11 tw:[&_input]:w-28 tw:[&_input]:rounded-lg tw:[&_input]:border tw:[&_input]:border-solid tw:[&_input]:border-stroke tw:[&_input]:bg-panel tw:[&_input]:px-3 tw:[&_input]:text-ink tw:[&_select]:min-h-11 tw:[&_select]:max-w-full tw:[&_select]:rounded-lg tw:[&_select]:border tw:[&_select]:border-solid tw:[&_select]:border-stroke tw:[&_select]:bg-panel tw:[&_select]:px-3 tw:[&_select]:text-ink">
       <label>Días hacia atrás<input name="days" type="number" min={1} max={365} value={draft.days} onChange={event => { setField('days', event.target.value); setSelected(null); }} required /></label>
       <label>Estado<select name="status" value={draft.status} onChange={event => { setField('status', event.target.value); setSelected(null); }}><option value="">Todos</option>{Object.entries(INCIDENT_STATUSES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
@@ -69,14 +70,15 @@ export function IncidentsPanel({ refreshKey = 0, active = true }: { refreshKey?:
       <div className="tw:overflow-x-auto"><table className="tw:w-full tw:min-w-[1000px] tw:border-collapse tw:text-left tw:text-sm tw:leading-relaxed tw:[&_th]:bg-canvas tw:[&_th]:px-4 tw:[&_th]:py-3 tw:[&_th]:text-muted tw:[&_td]:border-0 tw:[&_td]:border-t tw:[&_td]:border-solid tw:[&_td]:border-stroke tw:[&_td]:px-4 tw:[&_td]:py-4"><thead><tr><th>Registro</th><th>Tipo</th><th>Componente</th><th>Severidad</th><th>Estado</th><th>Inicio</th><th>Resolución</th><th>Detalle</th></tr></thead>
         <tbody>{data.items.map(row => <tr key={row.id}><td>{row.title}</td><td>{row.is_maintenance ? 'Mantenimiento' : 'Incidente'}</td><td>{componentName(row.component_key)}</td>
           <td>{row.severity === 'outage' ? 'Fuera de servicio' : 'Servicio degradado'}</td><td>{INCIDENT_STATUSES[row.status]}</td><td>{opsDate(row.started_at)}</td><td>{opsDate(row.resolved_at)}</td>
-          <td><button className="action-button secondary" onClick={() => { setSelected(row); setEditing(false); setCreating(false); }}>Ver detalle</button></td></tr>)}</tbody></table></div>
+          <td><button className="action-button secondary" type="button" aria-haspopup="dialog" onClick={() => { setSelected(row); setEditing(false); setCreating(false); }}>Ver detalle</button></td></tr>)}</tbody></table></div>
       <div className="tw:mt-4 tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3">
         <button type="button" className="action-button secondary" disabled={page <= 1} onClick={() => { setPage(page-1); setSelected(null); }}>Anterior</button>
         <span>Página {data.page} · {data.total} registros</span>
         <button type="button" className="action-button secondary" disabled={page*10 >= data.total} onClick={() => { setPage(page+1); setSelected(null); }}>Siguiente</button>
       </div>
     </>}
-    {selected && <div className="tw:space-y-6 tw:rounded-2xl tw:border tw:border-solid tw:border-stroke tw:bg-canvas tw:p-5 tw:text-base tw:leading-7 tw:sm:p-7">
+    {selected && !editing && <Modal title={selected.is_maintenance ? 'Detalle del mantenimiento' : 'Detalle del incidente'} onClose={() => setSelected(null)}>
+    <div className="tw:space-y-6 tw:p-2 tw:text-base tw:leading-7 tw:sm:p-4">
       <div className="tw:space-y-3">
         <p className="tw:text-sm tw:font-semibold tw:text-muted">{selected.is_maintenance ? 'Detalle del mantenimiento' : 'Detalle del incidente'}</p>
         <h3 className="tw:break-words tw:text-xl tw:font-bold tw:leading-snug">{selected.title}</h3>
@@ -112,7 +114,7 @@ export function IncidentsPanel({ refreshKey = 0, active = true }: { refreshKey?:
         </dl>
       </details>
       {allowed && !editing && <button className="action-button" onClick={() => setEditing(true)}>Actualizar registro</button>}
-      {editing && allowed && <IncidentForm key={selected.id} incident={selected} onSaved={saved} onCancel={() => setEditing(false)} />}
-    </div>}
+    </div></Modal>}
+    {selected && editing && allowed && <IncidentForm key={selected.id} incident={selected} onSaved={saved} onCancel={() => setEditing(false)} />}
   </section>;
 }

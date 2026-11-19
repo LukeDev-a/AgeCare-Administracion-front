@@ -7,7 +7,7 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 class FormValues { constructor(values) { this.values = values; } get(name) { return this.values[name] ?? null; } }
 function load(path, dependencies = {}, globals = {}) {
-  const scope = { exports: {}, Error, URLSearchParams, FormData: FormValues, ...globals, require: name => dependencies[name] ?? require('./helpers/filter-hooks.cjs').filterDependency(name, dependencies.react) ?? require(name) };
+  const scope = { exports: {}, Error, URLSearchParams, FormData: FormValues, ...globals, require: name => dependencies[name] ?? require('./helpers/filter-hooks.cjs').filterDependency(name, dependencies.react) ?? (name === '../../components/Modal' ? load('src/components/Modal.tsx') : require(name)) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, scope);
@@ -75,7 +75,7 @@ test('editor de cierre exige nota y envía solo estado/resolución, conservando 
   find(tree, node => node.type === 'select').props.onChange({ target: { value: 'resolved' } });
   tree = h.render(props);
   assert.equal(find(tree, node => node.props?.name === 'resolution').props.required, true);
-  await tree.props.onSubmit({ preventDefault() {}, currentTarget: { description: sample.description, resolution: 'Servicio restablecido' } });
+  await find(tree, node => node.type === 'form').props.onSubmit({ preventDefault() {}, currentTarget: { description: sample.description, resolution: 'Servicio restablecido' } });
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(saved, true);
   assert.deepEqual(JSON.parse(JSON.stringify(calls[0].body)), { status: 'resolved', resolution: 'Servicio restablecido' });
@@ -87,7 +87,7 @@ test('formulario admite mantenimiento futuro y conserva errores de rechazo del b
   let tree = h.render();
   find(tree, node => node.props?.type === 'checkbox').props.onChange({ target: { checked: true } });
   tree = h.render();
-  await tree.props.onSubmit({ preventDefault() {}, currentTarget: { title: 'Mantenimiento programado', description: 'Actualizar servicio',
+  await find(tree, node => node.type === 'form').props.onSubmit({ preventDefault() {}, currentTarget: { title: 'Mantenimiento programado', description: 'Actualizar servicio',
     severity: 'degraded', started_at: new Date(Date.now()+86400000).toISOString(), component_key: '' } });
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(created.is_maintenance, true);
@@ -102,6 +102,24 @@ test('transiciones visibles diferencian incidentes y mantenimientos', () => {
   assert.deepEqual(Array.from(meta.incidentNext({ ...sample, status: 'resolved' })), []);
   assert.match(meta.incidentMailLabel('not_configured'), /no enviado/);
   assert.match(meta.incidentMailLabel('queued'), /pendiente/);
+});
+
+test('formulario modal protege cambios y bloquea el cierre durante el guardado', async () => {
+  let finish;
+  const h = formHarness('support', { createIncident: () => new Promise(resolve => { finish = resolve; }) });
+  let tree = h.render();
+  assert.equal(tree.props.dirty, false);
+  find(tree, node => node.type === 'form').props.onChange();
+  tree = h.render();
+  assert.equal(tree.props.dirty, true);
+  find(tree, node => node.type === 'form').props.onSubmit({ preventDefault() {}, currentTarget: {
+    title: 'API con demora', description: 'La API presenta demoras', severity: 'degraded',
+    started_at: new Date(Date.now()-60000).toISOString(), component_key: 'api_core',
+  } });
+  assert.equal(h.render().props.busy, true);
+  finish(sample);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(h.render().props.busy, false);
 });
 
 test('panel consulta, pagina, filtra y muestra detalle sin edición para analyst', async () => {
@@ -120,6 +138,7 @@ test('panel consulta, pagina, filtra y muestra detalle sin edición para analyst
   const html = renderToStaticMarkup(tree);
   assert.doesNotMatch(html, /Registrar incidente/);
   find(tree, node => node.type === 'button' && node.props.children === 'Ver detalle').props.onClick();
+  assert.match(renderToStaticMarkup(render()), /<dialog/);
   assert.doesNotMatch(renderToStaticMarkup(render()), /Actualizar registro/);
   tree = render();
   find(tree, node => node.type === 'button' && node.props.children === 'Siguiente').props.onClick();

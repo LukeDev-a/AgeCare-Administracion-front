@@ -120,7 +120,7 @@ async function editorialRequest<T>(path: string, body?: object): Promise<T> {
   if (!response.ok) throw new Error(await parseErrorMessage(response, 'No se pudo completar la solicitud editorial.'));
   return response.json();
 }
-export const fetchCandidates = (page: number) => editorialRequest<{ items: NewsCandidate[]; total: number }>(`candidates?page=${page}`);
+export const fetchCandidates = (page: number, hasDraft?: boolean) => editorialRequest<{ items: NewsCandidate[]; total: number }>(`candidates?page=${page}${hasDraft === undefined ? '' : `&has_draft=${hasDraft}`}`);
 export const fetchEditorialJobs = () => editorialRequest<{ items: EditorialJob[] }>('jobs');
 export const fetchEditorialRuntime = () => editorialRequest<{ worker_enabled: boolean; gemini_ready: boolean; collection_enabled?: boolean; adaptation_enabled?: boolean }>('runtime');
 export const requestCollection = () => editorialRequest('collect', {});

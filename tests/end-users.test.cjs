@@ -33,7 +33,7 @@ function mount(path, name, dependencies = {}, props = {}) {
     async settle() { tree(); effects.splice(0).forEach(fn => fn()); await new Promise(setImmediate); } };
 }
 const source = { data_origin: 'demo', deactivation_effect: 'demo_only' };
-const account = { ...source, user_id: 'account-1', full_name: 'Cuenta de prueba', email: 'prueba@example.test', is_active: true, memberships_count: 2,
+const account = { ...source, user_id: 'account-1', full_name: 'Cuenta de prueba', email: 'prueba@example.test', is_active: true, memberships_count: 2, roles: ['family', 'caregiver'],
   memberships: [{ patient_id: 'p1', patient_name: 'Paciente uno', role: 'family', is_owner: true }, { patient_id: 'p2', patient_name: 'Paciente dos', role: 'caregiver', is_owner: false }],
   deactivated_at: null, deactivation_reason: null };
 const patient = { ...source, patient_id: 'p1', full_name: 'Paciente uno', members_count: 0, members: [] };
@@ -74,6 +74,10 @@ test('detalle explica perfil por paciente, no ofrece edición clínica ni desact
   const html = renderToStaticMarkup(React.createElement(Detail, { record: account, onSelect() {}, onDeactivate() {}, onClose() {} }));
   assert.ok(html.includes('Familiar') && html.includes('Cuidador/a') && html.includes('Paciente uno') && html.includes('Paciente dos'));
   assert.ok(html.includes('Desactivar cuenta'));
+  assert.ok(html.includes('<strong>Cuenta de prueba</strong> participa como familiar en el cuidado de <strong>Paciente uno</strong>'));
+  assert.ok(html.includes('<strong>Cuenta de prueba</strong> participa como cuidador/a en el cuidado de <strong>Paciente dos</strong>'));
+  const own = renderToStaticMarkup(React.createElement(Detail, { record: { ...account, memberships: [{ patient_id: 'own', patient_name: account.full_name, role: 'elder', is_owner: true }] }, onSelect() {}, onDeactivate() {} }));
+  assert.ok(own.includes('tiene una cuenta como adulto mayor'));
   const other = renderToStaticMarkup(React.createElement(Detail, { record: patient, onSelect() {}, onDeactivate() {}, onClose() {} }));
   assert.ok(other.includes('no tiene cuentas vinculadas') && other.includes('No es una cuenta de acceso'));
   assert.ok(!other.includes('Desactivar cuenta') && !other.includes('Editar') && !other.includes('Eliminar'));
@@ -105,8 +109,20 @@ function screen(api, role = 'admin') {
     '../../auth/AuthContext': { useAuth: () => ({ user: { role } }) }, '../../api/endUsers': api,
     './DirectoryDetail': { DirectoryDetail: Detail }, './DeactivateDialog': { DeactivateDialog: Dialog },
     '../../components/Modal': { Modal },
+    '../../lib/endUsersMeta': meta,
   });
 }
+test('listado muestra todos los roles y distingue cuentas sin vínculos y respuestas anteriores sin roles', async () => {
+  const h = screen({ fetchEndUsers: async () => page([account,
+    { ...account, user_id: 'empty', roles: [], memberships_count: 0 },
+    { ...account, user_id: 'old', roles: undefined }]) });
+  await h.settle();
+  const html = h.html();
+  assert.ok(html.includes('Roles de la cuenta en el cuidado'));
+  assert.ok(html.includes('Familiar') && html.includes('Cuidador/a'));
+  assert.ok(html.includes('Sin vínculos registrados') && html.includes('Consultar vínculos y roles'));
+});
+
 test('pantalla sin aviso superior consulta filtros/páginas y descarta respuestas tardías de otro directorio', async () => {
   const pending = [], calls = [];
   const h = screen({ fetchEndUsers: (...args) => { calls.push(args.slice(0, 3)); return new Promise(resolve => pending.push(resolve)); },

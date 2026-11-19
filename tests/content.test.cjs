@@ -37,6 +37,34 @@ function mount(path, name, dependencies, props = {}, globals = {}) {
   return { tree, find: predicate => find(tree(), predicate), html: () => renderToStaticMarkup(tree()),
     async settle() { tree(); effects.splice(0).forEach(fn => fn()); await new Promise(setImmediate); } };
 }
+test('noticias separa borradores con consulta y paginación independientes y abre el contenido vinculado', async () => {
+  const calls = [], opened = [];
+  const h = mount('src/pages/contenido/NewsCandidates.tsx', 'NewsCandidates', {
+    '../../api/content': {
+      fetchCandidates: async (page, hasDraft) => { calls.push([page, hasDraft]); return { total: 21, items: [{
+        id: hasDraft ? `prepared-${page}` : `pending-${page}`, title: hasDraft ? 'Noticia preparada' : 'Noticia pendiente',
+        status: hasDraft ? 'drafted' : 'pending', item_id: hasDraft ? 'content-id' : null, rights_status: 'own',
+      }] }; },
+      fetchEditorialJobs: async () => ({ items: [] }), fetchEditorialRuntime: async () => ({ worker_enabled: true, gemini_ready: true }),
+    },
+    '../../lib/contentMeta': load('src/lib/contentMeta.ts'), '../../lib/format': { ticketDate: String },
+    './CandidateReview': { CandidateReview: () => null }, './ImportNewsModal': { ImportNewsModal: () => null },
+  }, { onDraft: (...args) => opened.push(args) }, { window: { setInterval: () => 1, clearInterval() {}, addEventListener() {}, removeEventListener() {} } });
+  await h.settle();
+  assert.deepEqual(calls, [[1, false]]);
+  assert.ok(h.html().includes('Noticia pendiente') && !h.html().includes('Noticia preparada'));
+  const draftSection = () => h.find(n => n.type === 'details' && renderToStaticMarkup(n).includes('Con borrador creado'));
+  draftSection().props.onToggle({ currentTarget: { open: true } });
+  await h.settle();
+  assert.deepEqual(calls, [[1, false], [1, true]]);
+  assert.ok(h.html().includes('Abrir borrador'));
+  h.find(n => n.type === 'button' && n.props.children === 'Abrir borrador').props.onClick();
+  assert.deepEqual(opened, [['content-id', 'Noticia preparada']]);
+  find(draftSection(), n => n.type === 'button' && n.props.children === 'Siguiente').props.onClick();
+  await h.settle();
+  assert.deepEqual(calls, [[1, false], [1, true], [2, true]]);
+});
+
 test('adaptación confirma envío, bloquea duplicados y distingue cola, cuota y propuesta lista', async () => {
   const original = { id: 'candidate', title: 'Noticia de prueba', original_text: 'Contenido original por revisar', source_url: 'https://example.org',
     rights_status: 'own', source_hash: 'hash', status: 'pending', item_id: null, adaptation: null };
@@ -128,7 +156,7 @@ test('revisión mantiene texto al navegar, confirma reemplazo por IA y conserva 
   await new Promise(setImmediate);
   assert.equal(h.tree().props.dirty, false);
   assert.equal(h.find(n => n.type === 'form'), undefined);
-  click('Ir al borrador →'); assert.equal(opened, 'draft');
+  click('Abrir borrador →'); assert.equal(opened, 'draft');
 });
 
 test('importar JSON valida tamaño/formato y conserva la sesión del cliente', async () => {

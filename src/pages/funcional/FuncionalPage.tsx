@@ -44,10 +44,10 @@ export function FuncionalPage() {
     </div>
     <p className={notice}><strong>Qué significa adopción:</strong> porcentaje de usuarios activos de cada perfil que usaron una función en el mismo período. Por ejemplo, 40 % significa que 40 de cada 100 usuarios activos la utilizaron.</p>
     <div className="tw:flex tw:flex-wrap tw:gap-3"><button type="button" className={button} onClick={() => { setDays(30); setLimit(1); thresholdFilter.reset(); }}>Restablecer filtros</button></div>
-    <nav aria-label="Secciones de uso por funcionalidad" className="tw:flex tw:flex-wrap tw:gap-2 tw:rounded-2xl tw:bg-canvas tw:p-2">
+    <nav aria-label="Secciones de uso por funcionalidad" className="section-tabs tw:flex tw:flex-wrap tw:gap-2 tw:rounded-2xl tw:bg-canvas tw:p-2">
       {[['comparison', 'Comparar por perfil'], ['ranking', 'Más utilizadas'], ['alerts', 'Uso bajo']].map(([key, title]) => <button
         key={key} type="button" aria-pressed={section === key} aria-controls={`features-${key}`} onClick={() => setSection(key)}
-        className={`${button} ${section === key ? 'tw:border-brand tw:bg-brand-soft tw:text-brand-ink' : ''}`}>{title}</button>)}
+        className={button}>{title}</button>)}
     </nav>
     <div id="features-comparison" hidden={section !== 'comparison'}>
     <section className={panel} aria-label="Adopción de funcionalidades por perfil" aria-busy={!adoption && !adoptionState.error}>
@@ -60,7 +60,7 @@ export function FuncionalPage() {
         {adoption.features.some(feature => !feature.calculation_details) && <p role="status" className={notice}>El estado del cálculo no está disponible en esta respuesta; los porcentajes recibidos no permiten distinguir todos los casos.</p>}
         <div className="tw:my-5 tw:overflow-x-auto tw:rounded-xl tw:border tw:border-solid tw:border-stroke"><HeatmapTable data={adoption} /></div>
         {!!adoption.features.length && !!adoption.roles.length && <HeatmapLegend statesAvailable={adoption.features.every(feature => !!feature.calculation_details)} />}
-        <Updated value={adoption.computed_at} />
+        <Updated value={adoption.computed_at} through={adoption.data_through} />
       </>}
     </section>
     </div>
@@ -87,7 +87,7 @@ export function FuncionalPage() {
               </li>)}
             </ol>}
           </div>)}</div>
-          <Updated value={top.computed_at} />
+          <Updated value={top.computed_at} through={top.data_through} />
         </>}
       </section>
     </div>
@@ -107,15 +107,16 @@ export function FuncionalPage() {
           <h3 className="tw:mb-4 tw:mt-6 tw:text-lg tw:font-semibold">Uso bajo a revisar</h3><FeatureAlertList alerts={alerts.alerts.filter(alert => !alert.expected_low)} expected={false} />
           <h3 className="tw:mb-3 tw:mt-8 tw:text-lg tw:font-semibold">Uso bajo esperado</h3><p className={description}>Por ejemplo, una función de emergencia puede utilizarse poco sin que eso indique falta de adopción.</p>
           <FeatureAlertList alerts={alerts.alerts.filter(alert => alert.expected_low)} expected />
-          <Updated value={alerts.computed_at} />
+          <Updated value={alerts.computed_at} through={alerts.data_through} />
         </>}
       </section>
     </div>
   </div>;
 }
 
-function Updated({ value }: { value: string }) {
+function Updated({ value, through }: { value: string; through?: string | null }) {
   return <p className="tw:mt-6 tw:flex tw:flex-wrap tw:gap-x-2 tw:gap-y-1 tw:border-t tw:border-solid tw:border-stroke tw:pt-4 tw:text-sm tw:text-muted">
+    {through && <span className="tw:basis-full">Actividad hasta el {through.split('-').reverse().join('/')} · Días completos.</span>}
     Última actualización de los indicadores <strong className="tw:text-ink">{usersSupportDate(value)}</strong> <span>(hora de Santiago)</span>
   </p>;
 }

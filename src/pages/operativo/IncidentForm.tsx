@@ -5,6 +5,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { canManageIncidents } from '../../routes/permissions';
 import { OPS_COMPONENTS } from '../../lib/operationalMeta';
 import { INCIDENT_STATUSES, incidentNext } from '../../lib/incidentsMeta';
+import { Modal } from '../../components/Modal';
 
 export function IncidentForm({ incident, onSaved, onCancel }: {
   incident?: OpsIncident; onSaved: (value: OpsIncident) => void; onCancel: () => void;
@@ -13,6 +14,7 @@ export function IncidentForm({ incident, onSaved, onCancel }: {
   const allowed = canManageIncidents(user?.role);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [dirty, setDirty] = useState(false);
   const [state, setState] = useState(incident?.status ?? 'investigating');
   const [maintenance, setMaintenance] = useState(false);
   const [localNow] = useState(() => new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0, 16));
@@ -46,8 +48,11 @@ export function IncidentForm({ incident, onSaved, onCancel }: {
   }
   if (!allowed) return null;
   const closing = state !== incident?.status && (state === 'resolved' || state === 'completed');
-  return <form className="ticket-form tw:gap-5 tw:rounded-xl tw:border tw:border-solid tw:border-stroke tw:bg-panel tw:p-5 tw:[&_label]:gap-2 tw:[&_label]:text-sm tw:[&_input]:min-h-11 tw:[&_input]:min-w-0 tw:[&_select]:min-h-11 tw:[&_select]:min-w-0 tw:[&_textarea]:min-h-32 tw:[&_textarea]:text-sm tw:[&_input]:text-sm tw:[&_select]:text-sm tw:[&_input[type=checkbox]]:min-h-0 tw:[&_input[type=checkbox]]:accent-brand" onSubmit={event => void submit(event)}>
-    <h3 className="wide tw:text-lg tw:font-bold">{incident ? 'Actualizar registro' : 'Registrar incidente o mantenimiento'}</h3>
+  return <Modal title={incident ? 'Actualizar incidente o mantenimiento' : 'Registrar incidente o mantenimiento'}
+    onClose={onCancel} dirty={dirty} busy={busy} error={error}>
+  <form className="ticket-form tw:gap-5 tw:bg-panel tw:p-2 tw:[&_label]:gap-2 tw:[&_label]:text-sm tw:[&_input]:min-h-11 tw:[&_input]:min-w-0 tw:[&_select]:min-h-11 tw:[&_select]:min-w-0 tw:[&_textarea]:min-h-32 tw:[&_textarea]:text-sm tw:[&_input]:text-sm tw:[&_select]:text-sm tw:[&_input[type=checkbox]]:min-h-0 tw:[&_input[type=checkbox]]:accent-brand" onChange={() => setDirty(true)} onSubmit={event => void submit(event)}>
+    {incident ? <p className="wide tw:rounded-xl tw:bg-canvas tw:p-4 tw:font-semibold">{incident.title}</p>
+      : <p className="wide tw:text-muted">Describe qué ocurre, el servicio afectado y cuándo comenzó. También puedes registrar un mantenimiento programado.</p>}
     {!incident && <>
       <label className="wide">Título<input name="title" minLength={5} maxLength={160} required disabled={busy} /></label>
       <label>Severidad<select name="severity" disabled={busy}><option value="degraded">Servicio degradado</option><option value="outage">Fuera de servicio</option></select></label>
@@ -62,8 +67,7 @@ export function IncidentForm({ incident, onSaved, onCancel }: {
       </select></label>
       <label className="wide">Nota de resolución {closing && '(obligatoria para cerrar)'}<textarea name="resolution" defaultValue={incident.resolution ?? ''} maxLength={2000} required={closing} disabled={busy} /></label>
     </>}
-    {error && <p className="wide" role="alert">{error}</p>}
-    <div className="ticket-form-actions"><button type="button" className="action-button secondary" onClick={onCancel} disabled={busy}>Cancelar</button>
+    <div className="ticket-form-actions">
       <button type="submit" className="action-button" disabled={busy}>{busy ? 'Guardando...' : 'Guardar'}</button></div>
-  </form>;
+  </form></Modal>;
 }

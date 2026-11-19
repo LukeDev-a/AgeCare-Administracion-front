@@ -13,6 +13,7 @@ export interface RoleSummaryItem {
 }
 
 export interface RolesSummary {
+  data_through?: string | null;
   days: number;
   computed_at: string;
   roles: RoleSummaryItem[];
@@ -25,6 +26,7 @@ export interface WeeklyPeriod {
 }
 
 export interface RolesWeekly {
+  data_through?: string | null;
   computed_at: string;
   week_details?: WeeklyPeriod[];
   weeks: string[];

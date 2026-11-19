@@ -165,7 +165,7 @@ export function CandidateReview({ candidate, onChanged, onDraft, onClose, adapta
       {step === 3 && <section className="tw:space-y-5" aria-label="Preparar borrador">
         {draft ? <div className={ui.step}><h4 className={ui.heading}>El borrador ya está creado</h4>
           <p>Continúa allí para aprobar el texto, preparar el audio y publicar.</p>
-          <button type="button" className={primary} disabled={busy} onClick={() => onDraft(draft.id, draft.title)}>Ir al borrador →</button>
+          <button type="button" className={primary} disabled={busy} onClick={() => onDraft(draft.id, draft.title)}>Abrir borrador →</button>
         </div> : <>
           <div><h4 className={ui.heading}>Revisa y guarda tu borrador</h4><p className="tw:mt-2 tw:text-muted">{usedProposal ? 'Has copiado la propuesta de Gemini. Puedes corregirla antes de guardar.' : 'El formulario parte del texto original. Edítalo o vuelve a Adaptación para usar la propuesta.'}</p></div>
           {candidate.rights_status !== 'own' && <p className={ui.notice}>Puedes guardar un borrador, pero faltará confirmar la procedencia para aprobarlo y publicarlo.</p>}

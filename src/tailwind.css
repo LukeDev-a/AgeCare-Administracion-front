@@ -3,6 +3,18 @@
 @import "tailwindcss/theme.css" layer(theme) prefix(tw);
 @import "tailwindcss/utilities.css" layer(utilities) prefix(tw) important;
 
+/* Las utilidades son important: la selección debe ganar en la capa de
+   componentes, que tiene prioridad para declaraciones important. */
+@layer components {
+  .section-tabs > button[aria-pressed="true"],
+  .section-tabs > button[aria-pressed="true"]:hover {
+    background-color:#3b6fd4 !important;
+    border-color:#3b6fd4 !important;
+    color:#fff !important;
+    box-shadow:0 2px 5px rgba(0,0,0,.18) !important;
+  }
+}
+
 @theme inline {
   --color-panel: var(--surface);
   --color-canvas: var(--surface-muted);

@@ -18,6 +18,7 @@ export interface FeatureAdoptionRow {
 }
 
 export interface FeatureAdoption {
+  data_through?: string | null;
   computed_at: string;
   days: number;
   roles: string[];
@@ -36,6 +37,7 @@ export interface TopFeaturesByRole {
 }
 
 export interface TopFeatures {
+  data_through?: string | null;
   calculable_only?: boolean;
   computed_at: string;
   top_by_role: TopFeaturesByRole[];
@@ -51,6 +53,7 @@ export interface FeatureAlert {
 }
 
 export interface FeatureAlerts {
+  data_through?: string | null;
   calculable_only?: boolean;
   computed_at: string;
   threshold: number;

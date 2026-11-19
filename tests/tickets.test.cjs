@@ -196,6 +196,19 @@ test('ticket cerrado conserva lectura y oculta el formulario de mensajes', async
   assert.match(detail.html(), /cerrado y no admite/); assert.doesNotMatch(detail.html(), /<textarea/);
 });
 
+test('ticket muestra todos los perfiles y distingue cuenta sin roles de ticket sin cuenta', () => {
+  const Table = load('src/pages/tickets/TicketsTable.tsx', deps).TicketsTable;
+  const markup = requester => renderToStaticMarkup(React.createElement(Table, {
+    items: [{ ...ticket, requester }], selectedId: null, onSelect() {},
+  }));
+  const multiple = markup({ name: 'Ana González', email: 'ana@example.cl', user_id: 'account', role: null, roles: ['family', 'caregiver'] });
+  assert.match(multiple, /family · caregiver/);
+  assert.doesNotMatch(multiple, /Sin cuenta vinculada|Cuenta sin roles/);
+  assert.match(markup({ name: 'Ana', email: 'ana@example.cl', user_id: 'account', role: null, roles: [] }), /Cuenta sin roles de cuidado registrados/);
+  assert.match(markup({ name: 'Ana', email: 'ana@example.cl', user_id: null, role: null, roles: [] }), /Sin cuenta vinculada/);
+  assert.match(markup({ name: 'Histórico', email: 'antes@example.cl', role: 'elder' }), /elder/);
+});
+
 test('contexto conserva información anidada y escapa texto del solicitante', () => {
   const html = renderToStaticMarkup(React.createElement(context.TicketContext, { value: {
     patients: [{ display_name: '<script>Paciente</script>' }], devices: [{ platform: 'android', app_version: '1.0.3' }], cantidad: 0,

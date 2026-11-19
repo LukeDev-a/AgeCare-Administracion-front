@@ -42,10 +42,10 @@ export function UsuariosPage() {
       </div>
       <div className="tw:flex tw:flex-wrap tw:gap-3"><button type="button" className={button} onClick={() => { setDays(30); weeksFilter.reset(); categoryFilter.reset(); }}>Restablecer filtros</button><button type="button" className={button} onClick={() => setReload(value => value+1)}><span aria-hidden="true">↻ </span>Actualizar vista</button></div>
     </header>
-    <nav aria-label="Secciones de usuarios y soporte" className="tw:flex tw:flex-wrap tw:gap-2 tw:rounded-2xl tw:bg-canvas tw:p-2">
+    <nav aria-label="Secciones de usuarios y soporte" className="section-tabs tw:flex tw:flex-wrap tw:gap-2 tw:rounded-2xl tw:bg-canvas tw:p-2">
       {[['activity', 'Actividad de usuarios'], ['support', 'Atención de soporte']].map(([key, label]) => <button
         key={key} type="button" aria-pressed={section === key} aria-controls={`users-${key}`}
-        className={`${button} ${section === key ? 'tw:border-brand tw:bg-brand-soft tw:text-brand-ink' : ''}`}
+        className={button}
         onClick={() => setSection(key)}>{label}</button>)}
     </nav>
     <div id="users-activity" hidden={section !== 'activity'} className="tw:space-y-7">
@@ -60,7 +60,8 @@ export function UsuariosPage() {
       {rolesState.error && <p role="alert" className={errorStyle}>{rolesState.error}</p>}
       {!roles && !rolesState.error && <p role="status" className={notice}>Cargando perfiles...</p>}
       {roles && <>
-        <p className={description}>Período aplicado: {roles.days} días</p>
+        <p className={description}>Período aplicado: {roles.days} días{roles.data_through && ` · Actividad hasta el ${weeklyDayLabel(roles.data_through)}`}</p>
+        {roles.data_through && <p className={notice}>Se incluyen días completos. La actividad del día en curso se incorporará al siguiente cierre diario.</p>}
         {!roles.roles.length && <p>Sin datos de actividad por perfil.</p>}
         <div className="tw:my-5 tw:grid tw:gap-4 tw:sm:grid-cols-2 tw:xl:grid-cols-4">{roles.roles.map(role => <div key={role.role} className={metric} style={{ borderTop: `3px solid ${ROLE_META[role.role]?.color ?? 'var(--brand)'}` }}>
           <h3 className="tw:font-semibold tw:text-muted">{roleLabel(role.role)}</h3>
@@ -77,7 +78,7 @@ export function UsuariosPage() {
           <dl className="tw:mt-4 tw:grid tw:gap-4 tw:sm:grid-cols-2">
             <div><dt className="tw:font-semibold">Sesiones por semana</dt><dd>Promedio de sesiones informado para cada perfil.</dd></div>
             <div><dt className="tw:font-semibold">Duración media</dt><dd>Tiempo promedio que dura una sesión.</dd></div>
-            <div><dt className="tw:font-semibold">Retención a 30 días</dt><dd>Mide la continuidad de uso de cada perfil a 30 días.</dd></div>
+            <div><dt className="tw:font-semibold">Retención a 30 días</dt><dd>{roles.data_through ? 'De las cuentas activas en los 30 días anteriores, indica qué porcentaje volvió a usar la app en los últimos 30 días.' : 'Mide la continuidad de uso de cada perfil a 30 días.'}</dd></div>
             <div><dt className="tw:font-semibold">Crecimiento</dt><dd>El crecimiento compara ocho semanas y la retención conserva su ventana de 30 días, aunque cambies el período de actividad.</dd></div>
           </dl>
         </details>

@@ -4,6 +4,7 @@ export type MobileProfile = 'family' | 'caregiver' | 'doctor' | 'elder';
 export interface DemoSource { data_origin: 'demo'; deactivation_effect: 'demo_only' }
 export interface EndUserSummary extends DemoSource {
   user_id: string; full_name: string; email: string; is_active: boolean; memberships_count: number;
+  roles?: MobileProfile[];
 }
 export interface Membership { patient_id: string; patient_name: string; role: MobileProfile; is_owner: boolean }
 export interface EndUserDetail extends EndUserSummary {

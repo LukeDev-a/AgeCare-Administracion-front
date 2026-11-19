@@ -175,7 +175,7 @@ export function TicketDetail({ ticketId, onTicketUpdated, onClose }: TicketDetai
       <div className="tw:mt-5 tw:grid tw:gap-4 tw:border-t tw:border-solid tw:border-stroke tw:pt-5 tw:sm:grid-cols-2 tw:xl:grid-cols-4">
         <div>
           <h3 className="tw:text-sm tw:text-muted">Solicitante</h3>
-          <p className="tw:mt-2 tw:font-semibold">{ticket.requester.name} · {ticket.requester.role ? roleLabel(ticket.requester.role) : 'Sin perfil vinculado'}</p>
+          <p className="tw:mt-2 tw:font-semibold">{ticket.requester.name} · {ticket.requester.roles?.length ? ticket.requester.roles.map(roleLabel).join(' · ') : ticket.requester.role ? roleLabel(ticket.requester.role) : ticket.requester.user_id ? 'Cuenta sin roles de cuidado registrados' : 'Sin cuenta vinculada'}</p>
           <p className="tw:mt-1 tw:break-all tw:text-sm tw:text-muted">{ticket.requester.email}</p>
         </div>
         <div>

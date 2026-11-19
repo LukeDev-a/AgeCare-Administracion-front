@@ -11,11 +11,15 @@ export function DirectoryDetail({ record, onSelect, onDeactivate }: {
     {'user_id' in record ? <>
       <dl className="tw:grid tw:gap-4 tw:sm:grid-cols-2"><div className={info}><dt>Correo de la cuenta</dt><dd className="tw:mt-2 tw:font-semibold tw:break-words">{record.email}</dd></div>
         <div className={info}><dt>Estado de la cuenta</dt><dd className="tw:mt-2 tw:font-semibold">{record.is_active ? 'Activa' : 'Inactiva'}</dd></div></dl>
-      <div><h3 className="tw:text-xl tw:font-bold">Adultos mayores vinculados y roles</h3>
-      <p className="tw:mt-2 tw:text-muted">El rol indica cómo participa esta cuenta en el cuidado de cada adulto mayor. Puede ser diferente en cada vínculo; no corresponde a los permisos del personal de la consola.</p></div>
-      {record.memberships.length ? <div className={scroll}><table className={table}><thead><tr><th>Adulto mayor</th><th>Rol de esta cuenta</th><th>Responsable del círculo</th><th>Acción</th></tr></thead><tbody>
-        {record.memberships.map(m => <tr key={m.patient_id}><td>{m.patient_name}</td><td><span className="tw:inline-block tw:rounded-full tw:bg-brand-soft tw:px-3 tw:py-1 tw:font-semibold tw:text-brand-ink">{MOBILE_PROFILES[m.role]}</span></td><td>{m.is_owner ? 'Sí' : 'No'}</td><td><button type="button" className={button} onClick={() => onSelect('patients', m.patient_id)}>Ver adulto mayor</button></td></tr>)}
-      </tbody></table></div> : <p>No tiene vínculos de cuidado registrados.</p>}
+      <div><h3 className="tw:text-xl tw:font-bold">Cómo participa {record.full_name}</h3>
+      <p className="tw:mt-2 tw:text-muted">Los roles pertenecen a esta cuenta, según su relación con cada adulto mayor. No son permisos de la consola.</p></div>
+      {record.memberships.length ? <div className="tw:space-y-3">{record.memberships.map(m => <article key={m.patient_id} className={info}>
+        <div className="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-4"><div>
+          <span className="tw:inline-block tw:rounded-full tw:bg-brand-soft tw:px-3 tw:py-1 tw:text-sm tw:font-semibold tw:text-brand-ink">{MOBILE_PROFILES[m.role]}</span>
+          <p className="tw:mt-3">{m.role === 'elder' ? <><strong>{record.full_name}</strong> tiene una cuenta como adulto mayor. Ficha vinculada: <strong>{m.patient_name}</strong>.</> : <><strong>{record.full_name}</strong> participa como {MOBILE_PROFILES[m.role].toLowerCase()} en el cuidado de <strong>{m.patient_name}</strong>.</>}</p>
+          <p className="tw:mt-2 tw:text-sm tw:text-muted">{m.is_owner ? `${record.full_name} es responsable de este círculo de cuidado.` : `${record.full_name} no es responsable de este círculo de cuidado.`}</p>
+        </div><button type="button" className={button} onClick={() => onSelect('patients', m.patient_id)}>Ver adulto mayor</button></div>
+      </article>)}</div> : <p>No tiene vínculos de cuidado registrados.</p>}
       {!record.is_active && <div className={info}><h3 className="tw:mb-3 tw:font-semibold">Desactivación registrada</h3><p>Fecha de desactivación: {directoryDate(record.deactivated_at)} · Santiago</p><p className="tw:mt-3 tw:whitespace-pre-wrap tw:break-words">Motivo: {record.deactivation_reason || 'No registrado'}</p></div>}
       {record.is_active && <div className="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-4 tw:rounded-xl tw:border tw:border-solid tw:border-stroke tw:p-5"><div><h3 className="tw:font-semibold">Desactivar esta cuenta</h3><p className="tw:mt-2 tw:max-w-xl tw:text-muted">Se conservarán sus datos y vínculos de cuidado. Se pedirá un motivo antes de confirmar.</p></div><button className={`${button} tw:text-negative`} type="button" onClick={() => onDeactivate(record)}>Desactivar cuenta</button></div>}
     </> : <>
